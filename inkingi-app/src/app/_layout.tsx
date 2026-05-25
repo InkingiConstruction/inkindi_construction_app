@@ -3,9 +3,9 @@ import { useColorScheme } from 'react-native';
 import "../global.css";
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 import { AuthContextProvider, useAuth } from '@/contexts/AuthContext';
 import AuthFlow from '@/features/auth/AuthFlow';
+import HomeScreen from './index';
 
 function AppContent() {
   const { isLoggedIn } = useAuth();
@@ -14,7 +14,7 @@ function AppContent() {
     return <AuthFlow />;
   }
 
-  return <AppTabs />;
+  return <HomeScreen />;
 }
 
 export default function TabLayout() {

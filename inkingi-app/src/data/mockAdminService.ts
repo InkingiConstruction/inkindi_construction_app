@@ -27,6 +27,16 @@ export interface MockUser {
   businessRegNumber?: string;
   taxCertNumber?: string;
   kycRejectionReason?: string;
+  password?: string;
+  profilePic?: string;
+  jwtToken?: string;
+  sessionSample?: {
+    sessionId: string;
+    deviceName: string;
+    ipAddress: string;
+    location: string;
+    loginTime: string;
+  };
 }
 
 /**
@@ -46,7 +56,17 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     status: "ACTIVE",
     kycStatus: "PENDING",
     createdAt: "2026-05-10T09:15:00.000Z",
-    updatedAt: "2026-05-23T12:30:00.000Z"
+    updatedAt: "2026-05-23T12:30:00.000Z",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1jbGllbnQtMDAxIiwicm9sZSI6IkNMSUVOVCIsIm5hbWUiOiJHcmFjZSBVd2FzZSJ9.mock_sig_grace_123",
+    sessionSample: {
+      sessionId: "sess-grace-9941",
+      deviceName: "iPhone 15 Pro",
+      ipAddress: "193.251.22.45",
+      location: "Paris, France",
+      loginTime: "2026-05-25T14:20:00.000Z"
+    }
   },
   {
     id: "usr-engineer-001",
@@ -60,7 +80,17 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     createdAt: "2026-05-08T10:45:00.000Z",
     updatedAt: "2026-05-24T13:00:00.000Z",
     licenseNumber: "IER-2026-8942",
-    insuranceAmount: "15,000,000 RWF"
+    insuranceAmount: "15,000,000 RWF",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1lbmdpbmVlci0wMDEiLCJyb2xlIjoiRU5HSU5FRVIiLCJuYW1lIjoiRXJpYyBOZGF5aXNhYmEifQ.mock_sig_eric_456",
+    sessionSample: {
+      sessionId: "sess-eric-8832",
+      deviceName: "MacBook Pro",
+      ipAddress: "197.243.12.85",
+      location: "Kigali, Rwanda",
+      loginTime: "2026-05-25T15:10:00.000Z"
+    }
   },
   {
     id: "usr-supervisor-001",
@@ -74,7 +104,17 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     createdAt: "2026-05-09T11:30:00.000Z",
     updatedAt: "2026-05-24T13:00:00.000Z",
     licenseNumber: "SUP-QC-4019",
-    insuranceAmount: "10,000,000 RWF"
+    insuranceAmount: "10,000,000 RWF",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1zdXBlcnZpc29yLTAwMSIsInJvbGUiOiJTVVBFUlZJU09SIiwibmFtZSI6IkFsaW5lIE11a2FtYW5hIn9.mock_sig_aline_789",
+    sessionSample: {
+      sessionId: "sess-aline-7712",
+      deviceName: "Samsung Galaxy S24 Ultra",
+      ipAddress: "197.243.2.14",
+      location: "Musanze, Rwanda",
+      loginTime: "2026-05-25T13:45:00.000Z"
+    }
   },
   {
     id: "usr-supplier-001",
@@ -88,7 +128,17 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     createdAt: "2026-05-12T15:15:00.000Z",
     updatedAt: "2026-05-24T13:00:00.000Z",
     businessRegNumber: "GST-RDB-88124",
-    taxCertNumber: "RRA-TAX-99421"
+    taxCertNumber: "RRA-TAX-99421",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1zdXBwbGllci0wMDEiLCJyb2xlIjoiU1VQUExJRVIiLCJuYW1lIjoiS2lnYWxpIFN0ZWVsIERlcG90In9.mock_sig_supplier_987",
+    sessionSample: {
+      sessionId: "sess-supplier-4421",
+      deviceName: "Lenovo ThinkPad",
+      ipAddress: "197.243.4.99",
+      location: "Kigali, Rwanda",
+      loginTime: "2026-05-25T11:00:00.000Z"
+    }
   },
   {
     id: "usr-client-002",
@@ -100,7 +150,17 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     status: "ACTIVE",
     kycStatus: "APPROVED",
     createdAt: "2026-05-14T15:15:00.000Z",
-    updatedAt: "2026-05-24T13:00:00.000Z"
+    updatedAt: "2026-05-24T13:00:00.000Z",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InVzci1jbGllbnQtMDAyIiwicm9sZSI6IkNMSUVOVCIsIm5hbWUiOiJQYXRyaWNrIEhhYmltYW5hIn9.mock_sig_patrick_321",
+    sessionSample: {
+      sessionId: "sess-patrick-1102",
+      deviceName: "iPad Pro",
+      ipAddress: "82.165.234.12",
+      location: "London, United Kingdom",
+      loginTime: "2026-05-25T09:30:00.000Z"
+    }
   }
 ];
 

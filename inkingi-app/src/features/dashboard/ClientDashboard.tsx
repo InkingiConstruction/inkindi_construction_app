@@ -3,33 +3,66 @@
  * 📄 FILE HEADER COMMENT
  * ============================================================================
  * FILE NAME        : ClientDashboard.tsx
- * WHAT THIS FILE DOES : Comprehensive dashboard interface for Client users (e.g. Grace Uwase)
- * HOW IT DOES IT      : Renders project progress, escrow actions, and payment release flows with MoMo sandbox
+ * WHAT THIS FILE DOES : iOS-style dashboard interface for Client users with multi-level nested page navigation
+ * HOW IT DOES IT      : Bottom tabs (Dashboard, Projects, Escrow, Messages, Profile) with Light/Dark mode
+ *                       and sub-navigation routing (Projects List -> Project Details -> Milestone Inspection Modal)
  * DATA SOURCE         : AuthContext user details and project states
- * DATA DESTINATION    : Updates local transaction listings and releases escrow funds
- * PRINCIPLE APPLIED   : SOLID (Encapsulated client dashboard features)
+ * DATA DESTINATION    : Escrow transactions, messaging, and profile preferences
+ * PRINCIPLE APPLIED   : SOLID (Nested layout separation)
  * ============================================================================
  */
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, ProgressBarAndroid, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  TextInput, 
+  Alert, 
+  Modal, 
+  ActivityIndicator, 
+  Image,
+  Switch 
+} from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockProject } from '../../data/mockAdminService';
 
-/**
- * ============================================================================
- * 🔧 FUNCTION: ClientDashboard
- * ============================================================================
- * WHAT IT DOES: Renders client home, active projects, escrow funding, and payment approvals
- * PARAMETERS: None
- * RETURNS: JSX.Element - Dashboard view
- * WHO CALLS IT: index.tsx
- * PRINCIPLE: SOLID
- * ============================================================================
- */
 export default function ClientDashboard() {
-  const { user, projects, handleLogout } = useAuth();
+  const { 
+    user, 
+    projects, 
+    mockUsers,
+    theme, 
+    toggleTheme, 
+    handleLogout,
+    updateUserProfile 
+  } = useAuth();
   
+  // Custom Bottom Tabs Navigation State
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'projects' | 'escrow' | 'messages' | 'profile'>('dashboard');
+
+  // Sub-Navigation State (High-level vs Low-level drill-down detail pages inside Projects Tab)
+  const [projectsView, setProjectsView] = useState<'list' | 'details'>('list');
+  const [selectedMilestone, setSelectedMilestone] = useState<any | null>(null);
+  const [selectedMilestoneIndex, setSelectedMilestoneIndex] = useState<number>(-1);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+
+  // Theme support
+  const isDark = theme === 'dark';
+  const colors = {
+    bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
+    card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200/80 shadow-sm',
+    text: isDark ? 'text-white' : 'text-slate-900',
+    textSecondary: isDark ? 'text-slate-300' : 'text-slate-800',
+    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    border: isDark ? 'border-slate-800' : 'border-slate-250',
+    inputBg: isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200',
+    tabBar: isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200',
+    activeTab: 'text-emerald-500',
+    inactiveTab: isDark ? 'text-slate-500' : 'text-slate-400',
+  };
+
   // Dashboard states
   const [escrowBalance, setEscrowBalance] = useState(40500000);
   const [showDepositModal, setShowDepositModal] = useState(false);
@@ -41,15 +74,46 @@ export default function ClientDashboard() {
   const clientProjects = projects.filter(p => p.client === user?.name || p.client === 'Grace Uwase');
   const [selectedProject, setSelectedProject] = useState<MockProject | null>(clientProjects[0] || null);
 
-  // Approval status
+  // Milestone list state
   const [milestones, setMilestones] = useState(selectedProject?.milestones || []);
 
-  /**
-   * 🧱 CODE BLOCK: Handle Escrow Deposit (MTN Mobile Money webhook simulation)
-   * WHAT IT IS DOING: Simulates secure MoMo sandwich payment gateway
-   * WHY IT IS HERE  : Business rule validation (REG-13 and funding rules)
-   * PRINCIPLE       : KISS
-   */
+  // Messages states
+  const [chatText, setChatText] = useState('');
+  const [messagesList, setMessagesList] = useState([
+    { id: '1', sender: 'Eric (Engineer)', text: 'Hello Grace! The foundation concrete has set. I have issued the check to Aline.', time: '10:15 AM' },
+    { id: '2', sender: 'You', text: 'Great. Let me check the inspection report inside the portal now.', time: '10:20 AM' },
+    { id: '3', sender: 'Aline (Supervisor)', text: 'Perfect. Inspection verified! Rebar alignment and concrete depth meet specifications.', time: '11:05 AM' },
+    { id: '4', sender: 'You', text: 'Excellent, releasing foundation escrow cash now.', time: '11:30 AM' },
+  ]);
+
+  // Construction progress photo slides widget
+  const progressPhotos = [
+    { id: '1', title: 'Foundation Footing Pour', date: 'May 12, 2026', uri: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?auto=format&fit=crop&w=400&q=80' },
+    { id: '2', title: 'Reinforcement Steel Placement', date: 'May 18, 2026', uri: 'https://images.unsplash.com/photo-1581094288338-2314dddb7eed?auto=format&fit=crop&w=400&q=80' },
+    { id: '3', title: 'Framing & Pillar Masonry', date: 'May 23, 2026', uri: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80' },
+  ];
+
+  const handleSendMessage = () => {
+    if (!chatText.trim()) return;
+    const newMessage = {
+      id: Date.now().toString(),
+      sender: 'You',
+      text: chatText,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessagesList(prev => [...prev, newMessage]);
+    setChatText('');
+
+    setTimeout(() => {
+      setMessagesList(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        sender: 'Eric (Engineer)',
+        text: 'Received! We are setting up masonry scaffoldings next.',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    }, 1200);
+  };
+
   const handleDepositFunds = () => {
     if (!depositAmount || parseFloat(depositAmount) < 100000) {
       Alert.alert('Minimum Limit', 'Minimum escrow deposit is 100,000 RWF.');
@@ -71,12 +135,6 @@ export default function ClientDashboard() {
     }, 1500);
   };
 
-  /**
-   * 🧱 CODE BLOCK: Release Milestone Funds
-   * WHAT IT IS DOING: Releases a specific milestone percentage from locked escrow
-   * WHY IT IS HERE  : Allows client to pay engineer upon supervisor checklist approval
-   * PRINCIPLE       : SOLID
-   */
   const handleReleaseMilestone = (index: number, name: string, pct: number) => {
     const amount = (selectedProject?.budget || 0) * (pct / 100);
     Alert.alert(
@@ -95,6 +153,7 @@ export default function ClientDashboard() {
             const updated = [...milestones];
             updated[index].status = 'PAID';
             setMilestones(updated);
+            setShowMilestoneModal(false);
             Alert.alert('Payment Approved', `Funds released successfully! Engineer has been notified.`);
           } 
         }
@@ -102,12 +161,6 @@ export default function ClientDashboard() {
     );
   };
 
-  /**
-   * 🧱 CODE BLOCK: Initiate Dispute
-   * WHAT IT IS DOING: Locks escrow balance and flags milestone as disputed
-   * WHY IT IS HERE  : Dispute mediation initiation
-   * PRINCIPLE       : KISS
-   */
   const handleInitiateDispute = (index: number, name: string) => {
     Alert.alert(
       'Initiate Dispute',
@@ -120,9 +173,10 @@ export default function ClientDashboard() {
             const updated = [...milestones];
             updated[index].status = 'REVISION';
             setMilestones(updated);
+            setShowMilestoneModal(false);
             Alert.alert(
               'Dispute Logged',
-              'Mediation dispute opened. Administrator assigned to review checklist & progress photos (SLA: 14 days).'
+              'Mediation dispute opened. Administrator assigned to review checklist & progress photos.'
             );
           }
         }
@@ -130,137 +184,489 @@ export default function ClientDashboard() {
     );
   };
 
+  const handleOpenMilestoneDetails = (m: any, index: number) => {
+    setSelectedMilestone(m);
+    setSelectedMilestoneIndex(index);
+    setShowMilestoneModal(true);
+  };
+
   return (
-    <ScrollView className="flex-1 bg-slate-900 px-5 pt-4" showsVerticalScrollIndicator={false}>
-      {/* Top Header */}
-      <View className="flex-row justify-between items-center mb-6">
-        <View>
-          <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider">Welcome Client</Text>
-          <Text className="text-white text-2xl font-extrabold">{user?.name}</Text>
+    <View className={`flex-1 ${colors.bg}`}>
+      
+      {/* Dynamic Header */}
+      <View className={`px-6 pt-14 pb-4 flex-row justify-between items-center ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
+        <View className="flex-row items-center gap-3">
+          {user?.profilePic ? (
+            <Image 
+              source={{ uri: user.profilePic }} 
+              className="w-10 h-10 rounded-full border border-emerald-500" 
+            />
+          ) : (
+            <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-base">{(user?.name || 'U').charAt(0)}</Text>
+            </View>
+          )}
+          <View>
+            <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Client Workspace</Text>
+            <Text className={`${colors.text} text-base font-bold`}>{user?.name}</Text>
+          </View>
         </View>
+
         <TouchableOpacity 
           onPress={handleLogout}
-          className="bg-red-500/10 border border-red-500/20 px-3.5 py-2 rounded-xl"
+          className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg"
         >
-          <Text className="text-red-400 text-xs font-bold">Logout ➔</Text>
+          <Text className="text-red-500 text-xs font-bold">Logout</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Escrow Account Balance Widget */}
-      <View className="bg-emerald-950/60 border border-emerald-500/20 rounded-3xl p-6 mb-6 shadow-xl">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-emerald-400 text-sm font-bold tracking-wider uppercase">Project Escrow Vault</Text>
-          <View className="bg-emerald-500/10 border border-emerald-400/20 px-2 py-0.5 rounded-md">
-            <Text className="text-emerald-400 text-xs font-bold">MTN Partner Wallet</Text>
-          </View>
-        </View>
+      {/* Main Content Areas based on Tab state */}
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }} 
+        className="flex-1 px-5 pt-4"
+        showsVerticalScrollIndicator={false}
+      >
         
-        <Text className="text-white text-3xl font-extrabold tracking-tight mb-4">
-          {escrowBalance.toLocaleString()} <Text className="text-emerald-400 text-xl font-bold">RWF</Text>
-        </Text>
-
-        <View className="flex-row gap-3">
-          <TouchableOpacity 
-            onPress={() => setShowDepositModal(true)}
-            className="bg-emerald-600 active:bg-emerald-700 py-3 rounded-xl flex-1 items-center border border-emerald-500 shadow-md"
-          >
-            <Text className="text-white font-bold text-sm">💰 Deposit Escrow</Text>
-          </TouchableOpacity>
-          <View className="bg-white/5 py-3 rounded-xl flex-1 items-center border border-white/10 justify-center">
-            <Text className="text-slate-400 text-xs font-medium">Auto Locked for active builds</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Active Project Overview */}
-      {selectedProject ? (
-        <View className="bg-slate-800 border border-slate-700 rounded-3xl p-5 mb-8 shadow-xl">
-          <View className="flex-row justify-between items-start mb-4">
-            <View>
-              <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Active Build</Text>
-              <Text className="text-white text-lg font-bold">{selectedProject.name}</Text>
-              <Text className="text-slate-400 text-xs mt-0.5">📍 {selectedProject.location}</Text>
-            </View>
-            <View className="bg-emerald-600/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-              <Text className="text-emerald-400 text-xs font-bold">{selectedProject.progress}% Done</Text>
-            </View>
-          </View>
-
-          {/* Progress Bar placeholder */}
-          <View className="h-2 bg-slate-700 rounded-full overflow-hidden mb-6">
-            <View className="h-full bg-emerald-500 rounded-full" style={{ width: `${selectedProject.progress}%` }} />
-          </View>
-
-          {/* Assigned Engineer details */}
-          <View className="bg-slate-900 border border-slate-700/60 p-4 rounded-2xl flex-row items-center justify-between mb-6">
-            <View className="flex-row items-center gap-3">
-              <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center border border-slate-700">
-                <Text className="text-lg">👷‍♂️</Text>
-              </View>
-              <View>
-                <Text className="text-slate-500 text-xs uppercase font-bold">Assigned Engineer</Text>
-                <Text className="text-white font-bold text-sm">{selectedProject.engineer}</Text>
-              </View>
-            </View>
-            <View className="bg-slate-800/80 border border-slate-700/60 px-2.5 py-1 rounded-lg">
-              <Text className="text-slate-400 text-xs font-semibold">IER License: Active</Text>
-            </View>
-          </View>
-
-          {/* Milestones / BoQ Tracker */}
-          <Text className="text-white font-extrabold text-base mb-4">Milestone Structure & Payments</Text>
-          <View className="space-y-3">
-            {milestones.map((m, idx) => (
-              <View 
-                key={idx} 
-                className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-2xl"
+        {/* ================= TAB: DASHBOARD ================= */}
+        {currentTab === 'dashboard' && (
+          <View className="space-y-5">
+            {/* Balance Card */}
+            <View className="bg-emerald-600 rounded-3xl p-5 shadow-lg relative overflow-hidden">
+              <Text className="text-emerald-100 text-xs font-bold tracking-wider uppercase mb-1">Escrow Vault Balance</Text>
+              <Text className="text-white text-3xl font-extrabold mb-4">
+                {escrowBalance.toLocaleString()} <Text className="text-emerald-200 text-lg">RWF</Text>
+              </Text>
+              <TouchableOpacity 
+                onPress={() => setShowDepositModal(true)}
+                className="bg-white/20 active:bg-white/30 py-3 rounded-xl items-center border border-white/20 shadow-sm"
               >
-                <View className="flex-row justify-between items-center mb-3">
-                  <View className="flex-1">
-                    <Text className="text-white font-semibold text-sm">{m.name}</Text>
-                    <Text className="text-slate-400 text-xs mt-0.5">Budget Allocation: {m.pct}% ({((selectedProject.budget * m.pct) / 100).toLocaleString()} RWF)</Text>
+                <Text className="text-white font-bold text-sm">💰 Quick Deposit</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Active Build High-level Summary Card */}
+            {selectedProject ? (
+              <TouchableOpacity 
+                onPress={() => {
+                  setProjectsView('details');
+                  setCurrentTab('projects');
+                }}
+                className={`p-5 rounded-3xl border ${colors.card}`}
+              >
+                <View className="flex-row justify-between items-start mb-3">
+                  <View>
+                    <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Primary Investment Project</Text>
+                    <Text className={`${colors.text} text-lg font-bold mt-1`}>{selectedProject.name}</Text>
+                    <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {selectedProject.location}</Text>
                   </View>
-                  <View className={`px-2 py-0.5 rounded border ${
-                    m.status === 'PAID' 
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                      : m.status === 'REVISION'
-                      ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                      : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                  }`}>
-                    <Text className={`text-[10px] font-extrabold uppercase ${
-                      m.status === 'PAID' ? 'text-emerald-400' : m.status === 'REVISION' ? 'text-red-400' : 'text-amber-400'
-                    }`}>
-                      {m.status}
-                    </Text>
+                  <View className="bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded">
+                    <Text className="text-emerald-500 text-xs font-bold">{selectedProject.progress}% Done</Text>
                   </View>
                 </View>
+                
+                <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-4">
+                  <View className="h-full bg-emerald-500" style={{ width: `${selectedProject.progress}%` }} />
+                </View>
 
-                {/* Actions for pending items */}
-                {m.status === 'PENDING' && (
-                  <View className="flex-row gap-2 border-t border-slate-800 pt-3 mt-2">
-                    <TouchableOpacity 
-                      onPress={() => handleReleaseMilestone(idx, m.name, m.pct)}
-                      className="bg-emerald-600/20 border border-emerald-500/30 px-3 py-1.5 rounded-lg flex-1 items-center"
-                    >
-                      <Text className="text-emerald-400 text-xs font-bold">Release Payment</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      onPress={() => handleInitiateDispute(idx, m.name)}
-                      className="bg-red-600/10 border border-red-500/20 px-3 py-1.5 rounded-lg flex-1 items-center"
-                    >
-                      <Text className="text-red-400 text-xs font-bold">Raise Dispute</Text>
-                    </TouchableOpacity>
+                {/* Info desk */}
+                <View className="bg-slate-100 dark:bg-slate-900/60 p-3.5 rounded-2xl flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2.5">
+                    <Text className="text-lg">👷‍♂️</Text>
+                    <View>
+                      <Text className={`${colors.textMuted} text-[10px] font-bold uppercase`}>Contracted Builder</Text>
+                      <Text className={`${colors.text} text-xs font-bold`}>{selectedProject.engineer}</Text>
+                    </View>
                   </View>
-                )}
+                  <Text className="text-emerald-500 text-xs font-extrabold">Tap to Manage ➔</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        )}
+
+        {/* ================= TAB: PROJECTS (WITH SUB-NAVIGATION NESTED PAGES) ================= */}
+        {currentTab === 'projects' && (
+          <View className="space-y-4">
+            
+            {/* View 1: High-Level Projects directory list */}
+            {projectsView === 'list' ? (
+              <View className="space-y-4">
+                <Text className={`${colors.text} text-lg font-bold mb-1`}>Your Construction Investments</Text>
+                {clientProjects.map((proj, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => {
+                      setSelectedProject(proj);
+                      setMilestones(proj.milestones);
+                      setProjectsView('details');
+                    }}
+                    className={`p-5 rounded-3xl border ${colors.card} space-y-3`}
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View>
+                        <Text className={`${colors.text} font-bold text-base`}>{proj.name}</Text>
+                        <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {proj.location}</Text>
+                      </View>
+                      <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        <Text className="text-emerald-500 text-xs font-bold">{proj.progress}%</Text>
+                      </View>
+                    </View>
+                    
+                    <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      <View className="h-full bg-emerald-500" style={{ width: `${proj.progress}%` }} />
+                    </View>
+
+                    <View className="flex-row justify-between items-center text-xs pt-1">
+                      <Text className={colors.textMuted}>Budget: {proj.budget.toLocaleString()} RWF</Text>
+                      <Text className="text-emerald-500 font-bold text-xs">View Details ➔</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
+            ) : (
+              
+              /* View 2: Low-Level Drill-Down Detail page */
+              <View className="space-y-5">
+                {/* Back Navigation Bar */}
+                <TouchableOpacity
+                  onPress={() => setProjectsView('list')}
+                  className="flex-row items-center py-2"
+                >
+                  <Text className="text-emerald-500 text-lg font-bold">←</Text>
+                  <Text className="text-emerald-500 text-sm font-bold ml-2">Back to Project Directory</Text>
+                </TouchableOpacity>
+
+                {/* Project Header Widget */}
+                <View className={`p-5 rounded-3xl border ${colors.card} space-y-2`}>
+                  <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Currently Managing</Text>
+                  <Text className={`${colors.text} text-xl font-extrabold`}>{selectedProject?.name}</Text>
+                  <Text className={`${colors.textSecondary} text-xs font-medium`}>📍 Location: {selectedProject?.location}</Text>
+                  <Text className={`${colors.textSecondary} text-xs font-medium`}>👷‍♂️ Contractor: {selectedProject?.engineer}</Text>
+                  <Text className={`${colors.textSecondary} text-xs font-medium`}>💰 Total Budget: {selectedProject?.budget.toLocaleString()} RWF</Text>
+                </View>
+
+                {/* Widget 1: Horizontally Scrollable Construction Progress Photos */}
+                <View className="space-y-3">
+                  <Text className={`${colors.text} font-bold text-sm ml-1`}>Recent Site Progress Photos</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="flex-row gap-3"
+                  >
+                    {progressPhotos.map(photo => (
+                      <View 
+                        key={photo.id}
+                        className={`w-64 rounded-2xl overflow-hidden border mr-3 ${colors.card}`}
+                      >
+                        <Image 
+                          source={{ uri: photo.uri }}
+                          className="w-full h-32"
+                        />
+                        <View className="p-3">
+                          <Text className={`${colors.text} font-bold text-xs`}>{photo.title}</Text>
+                          <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>Uploaded: {photo.date}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {/* Widget 2: Vertical Stepper Timeline for Milestones */}
+                <View className="space-y-3">
+                  <Text className={`${colors.text} font-bold text-sm ml-1`}>Milestones Checklist Timeline</Text>
+                  
+                  <View className="space-y-4 pl-3 relative border-l border-slate-350 dark:border-slate-700 ml-4 pt-2">
+                    {milestones.map((m, idx) => {
+                      const isPaid = m.status === 'PAID';
+                      const isPending = m.status === 'PENDING';
+                      
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => handleOpenMilestoneDetails(m, idx)}
+                          className="relative pl-6 pb-2"
+                        >
+                          {/* Timeline node marker indicator */}
+                          <View 
+                            className={`w-4 h-4 rounded-full border-2 absolute -left-[30px] top-0.5 justify-center items-center ${
+                              isPaid 
+                                ? 'bg-emerald-500 border-emerald-600' 
+                                : isPending
+                                ? 'bg-amber-500 border-amber-600'
+                                : 'bg-slate-300 dark:bg-slate-800 border-slate-400 dark:border-slate-700'
+                            }`}
+                          />
+
+                          <View className={`p-4 rounded-2xl border ${colors.card} flex-row justify-between items-center`}>
+                            <View className="flex-1 pr-2">
+                              <Text className={`${colors.text} font-bold text-xs`}>{m.name}</Text>
+                              <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>Weight: {m.pct}% ({((selectedProject?.budget || 0) * m.pct / 100).toLocaleString()} RWF)</Text>
+                            </View>
+                            <Text className={`text-[10px] font-bold ${isPaid ? 'text-emerald-500' : isPending ? 'text-amber-500' : colors.textMuted}`}>
+                              {m.status} ➔
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ================= TAB: ESCROW VAULT ================= */}
+        {currentTab === 'escrow' && (
+          <View className="space-y-4">
+            <View className={`p-5 rounded-3xl border ${colors.card}`}>
+              <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Partnership Escrow Vault</Text>
+              <Text className={`${colors.text} text-3xl font-extrabold mt-1 mb-4`}>
+                {escrowBalance.toLocaleString()} <Text className="text-emerald-500 text-xl font-bold">RWF</Text>
+              </Text>
+              
+              <TouchableOpacity 
+                onPress={() => setShowDepositModal(true)}
+                className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center border border-emerald-500"
+              >
+                <Text className="text-white font-bold text-sm">💰 Deposit Escrow Wallet</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text className={`${colors.text} text-base font-bold mt-4 mb-2`}>Recent Transactions</Text>
+            <View className={`p-4 rounded-2xl border ${colors.card} space-y-3`}>
+              <View className="flex-row justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700/50">
+                <View>
+                  <Text className={`${colors.text} text-xs font-bold`}>MTN MoMo Deposit</Text>
+                  <Text className={`${colors.textMuted} text-[10px]`}>May 25, 2026</Text>
+                </View>
+                <Text className="text-emerald-500 font-bold text-xs">+10,000,000 RWF</Text>
+              </View>
+              <View className="flex-row justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700/50">
+                <View>
+                  <Text className={`${colors.text} text-xs font-bold`}>Milestone #1 Paid</Text>
+                  <Text className={`${colors.textMuted} text-[10px]`}>May 24, 2026</Text>
+                </View>
+                <Text className="text-slate-500 font-bold text-xs">-8,200,000 RWF</Text>
+              </View>
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className={`${colors.text} text-xs font-bold`}>Milestone #2 Paid</Text>
+                  <Text className={`${colors.textMuted} text-[10px]`}>May 24, 2026</Text>
+                </View>
+                <Text className="text-slate-500 font-bold text-xs">-20,500,000 RWF</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ================= TAB: MESSAGES ================= */}
+        {currentTab === 'messages' && (
+          <View className="space-y-4">
+            <View className={`p-4 rounded-2xl border ${colors.card} h-96 flex-col justify-between`}>
+              <ScrollView showsVerticalScrollIndicator={false} className="space-y-3 flex-1 pr-1">
+                {messagesList.map(msg => (
+                  <View 
+                    key={msg.id} 
+                    className={`p-3 rounded-2xl max-w-[80%] ${
+                      msg.sender === 'You' 
+                        ? 'bg-emerald-600 self-end rounded-tr-none' 
+                        : 'bg-slate-100 dark:bg-slate-700/50 self-start rounded-tl-none'
+                    }`}
+                  >
+                    <Text className={`${colors.textMuted} text-[9px] font-bold mb-0.5`}>{msg.sender}</Text>
+                    <Text className={`text-xs ${msg.sender === 'You' ? 'text-white' : colors.text}`}>{msg.text}</Text>
+                    <Text className={`text-[8px] text-right mt-1 ${msg.sender === 'You' ? 'text-emerald-250' : colors.textMuted}`}>{msg.time}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              <View className="flex-row gap-2 border-t border-slate-100 dark:border-slate-700 pt-3 mt-2">
+                <TextInput
+                  value={chatText}
+                  onChangeText={setChatText}
+                  placeholder="Type message to constructor..."
+                  placeholderTextColor="#94a3b8"
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-xs ${colors.inputBg} ${colors.text}`}
+                />
+                <TouchableOpacity 
+                  onPress={handleSendMessage}
+                  className="bg-emerald-600 px-4 py-2.5 rounded-xl justify-center items-center"
+                >
+                  <Text className="text-white font-bold text-xs">Send</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ================= TAB: PROFILE ================= */}
+        {currentTab === 'profile' && (
+          <View className="space-y-4">
+            {/* User Meta Card */}
+            <View className={`p-5 rounded-3xl border ${colors.card} items-center`}>
+              {user?.profilePic ? (
+                <Image 
+                  source={{ uri: user.profilePic }} 
+                  className="w-20 h-20 rounded-full border-2 border-emerald-500 mb-3" 
+                />
+              ) : null}
+              <Text className={`${colors.text} text-lg font-bold`}>{user?.name}</Text>
+              <Text className={`${colors.textMuted} text-xs`}>{user?.email}</Text>
+              <View className="bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded mt-2">
+                <Text className="text-emerald-500 text-[10px] font-bold uppercase">KYC status: {user?.kycStatus}</Text>
+              </View>
+            </View>
+
+            {/* Profile Preferences */}
+            <View className={`p-5 rounded-3xl border ${colors.card} space-y-4`}>
+              <Text className={`${colors.text} font-bold text-sm mb-1`}>Settings</Text>
+              
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className={`${colors.text} text-xs font-semibold`}>Dark Mode Theme</Text>
+                  <Text className={`${colors.textMuted} text-[10px]`}>Toggle dark mode visual workspace</Text>
+                </View>
+                <Switch 
+                  value={theme === 'dark'} 
+                  onValueChange={toggleTheme} 
+                  trackColor={{ true: '#10b981', false: '#cbd5e1' }}
+                />
+              </View>
+            </View>
+
+            {/* Verification admin controller */}
+            <View className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-3xl space-y-3">
+              <Text className="text-blue-500 font-bold text-sm">🛠 Admin & KYC Simulation Desk</Text>
+              <Text className="text-slate-500 text-[11px] leading-4">
+                Instantly toggle the KYC verification status of your client account to test how the screen routing gates behave:
+              </Text>
+              
+              <View className="flex-row flex-wrap gap-2 pt-1">
+                {(['PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const).map(status => (
+                  <TouchableOpacity
+                    key={status}
+                    onPress={() => updateUserProfile({ kycStatus: status })}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
+                      user?.kycStatus === status 
+                        ? 'bg-blue-500 border-blue-600 text-white' 
+                        : 'bg-white border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <Text className={user?.kycStatus === status ? 'text-white text-[11px] font-bold' : 'text-slate-700 text-[11px]'}>
+                      {status}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text className="text-slate-500 font-semibold text-[11px] pt-3">Seeded Mock Users Reference:</Text>
+              <View className="bg-slate-200/50 p-2.5 rounded-xl space-y-1">
+                {mockUsers.map(u => (
+                  <Text key={u.id} className="text-[10px] text-slate-700 font-mono">
+                    • {u.role}: <Text className="font-bold">{u.email}</Text> | {u.password} ({u.name})
+                  </Text>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+      </ScrollView>
+
+      {/* iOS style custom bottom navigation */}
+      <View className={`border-t flex-row justify-around items-center h-20 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+        <TouchableOpacity 
+          onPress={() => setCurrentTab('dashboard')}
+          className="items-center justify-center w-14 h-12"
+        >
+          <Text className={currentTab === 'dashboard' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Dash</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => setCurrentTab('projects')}
+          className="items-center justify-center w-14 h-12"
+        >
+          <Text className={currentTab === 'projects' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Builds</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => setCurrentTab('escrow')}
+          className="items-center justify-center w-14 h-12"
+        >
+          <Text className={currentTab === 'escrow' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Vault</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => setCurrentTab('messages')}
+          className="items-center justify-center w-14 h-12"
+        >
+          <Text className={currentTab === 'messages' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Chat</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => setCurrentTab('profile')}
+          className="items-center justify-center w-14 h-12"
+        >
+          <Text className={currentTab === 'profile' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>User</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Widget 3: Low-Level Drill-Down Milestone Inspection Details Modal */}
+      <Modal
+        visible={showMilestoneModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMilestoneModal(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className={`${colors.text} text-base font-bold`}>Milestone Verification Audit</Text>
+              <TouchableOpacity onPress={() => setShowMilestoneModal(false)}>
+                <Text className={`${colors.textMuted} text-lg font-bold`}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="space-y-3 mb-5">
+              <View className="bg-slate-100 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <Text className={`${colors.textMuted} text-[10px] font-bold uppercase`}>Milestone Title</Text>
+                <Text className={`${colors.text} text-sm font-bold mt-0.5`}>{selectedMilestone?.name}</Text>
+                <Text className={`${colors.textMuted} text-xs mt-1`}>Status: <Text className="text-emerald-500 font-bold uppercase">{selectedMilestone?.status}</Text></Text>
+              </View>
+
+              {/* Inspector Quality Checklist widget */}
+              <View className="space-y-2">
+                <Text className={`${colors.text} text-xs font-bold mb-1 ml-1`}>Inspector Checklist Certifications</Text>
+                <View className="space-y-1.5 pl-1.5">
+                  <Text className={`${colors.textSecondary} text-xs`}>✓ Concrete strength matches IER spec (Verified)</Text>
+                  <Text className={`${colors.textSecondary} text-xs`}>✓ Foundation depth meets required limits (Verified)</Text>
+                  <Text className={`${colors.textSecondary} text-xs`}>✓ Steel rebar alignment strictly checked (Verified)</Text>
+                  <Text className={`${colors.textSecondary} text-xs`}>✓ Digital signature certificate ledger ID: #SIG-89240 (Signed)</Text>
+                </View>
+              </View>
+            </View>
+
+            {selectedMilestone?.status === 'PENDING' && (
+              <View className="flex-row gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <TouchableOpacity 
+                  onPress={() => handleReleaseMilestone(selectedMilestoneIndex, selectedMilestone?.name, selectedMilestone?.pct)}
+                  className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl flex-1 items-center justify-center shadow-lg border border-emerald-500"
+                >
+                  <Text className="text-white font-bold text-xs">Release Milestone Cash</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => handleInitiateDispute(selectedMilestoneIndex, selectedMilestone?.name)}
+                  className="bg-red-500/10 border border-red-500/25 py-3.5 rounded-xl flex-1 items-center justify-center"
+                >
+                  <Text className="text-red-500 font-bold text-xs">Raise Dispute</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
-      ) : (
-        <View className="bg-slate-800 border border-slate-700 p-8 rounded-3xl items-center">
-          <Text className="text-slate-400 text-center font-bold">No projects created yet. Tap below to invite an engineer!</Text>
-        </View>
-      )}
+      </Modal>
 
       {/* Deposit MoMo Webview Simulation Modal */}
       <Modal
@@ -269,25 +675,26 @@ export default function ClientDashboard() {
         animationType="slide"
         onRequestClose={() => setShowDepositModal(false)}
       >
-        <View className="flex-1 bg-black/80 justify-end">
-          <View className="bg-slate-800 border-t border-slate-700 rounded-t-3xl p-6">
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-white text-xl font-bold">MTN Mobile Money Gateway</Text>
+              <Text className={`${colors.text} text-lg font-bold`}>MTN Mobile Money Gateway</Text>
               <TouchableOpacity onPress={() => setShowDepositModal(false)}>
-                <Text className="text-slate-400 text-lg font-bold">✕</Text>
+                <Text className={`${colors.textMuted} text-lg font-bold`}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text className="text-slate-400 text-sm mb-4">
+            <Text className={`${colors.textMuted} text-xs mb-4`}>
               Provide payment details to request direct escrow funding verification callback.
             </Text>
 
-            <View className="space-y-4 mb-6">
+            <View className="space-y-3 mb-5">
               <View>
-                <Text className="text-slate-300 text-xs font-bold mb-2 ml-1">MTN Phone Number</Text>
+                <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>MTN Phone Number</Text>
                 <TextInput
-                  className="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 text-base"
+                  className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
                   placeholder="+250788100000"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="phone-pad"
                   value={momoNumber}
                   onChangeText={setMomoNumber}
@@ -295,10 +702,11 @@ export default function ClientDashboard() {
               </View>
 
               <View>
-                <Text className="text-slate-300 text-xs font-bold mb-2 ml-1">Deposit Amount (RWF)</Text>
+                <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>Deposit Amount (RWF)</Text>
                 <TextInput
-                  className="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 text-base"
+                  className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
                   placeholder="5,000,000"
+                  placeholderTextColor="#94a3b8"
                   keyboardType="numeric"
                   value={depositAmount}
                   onChangeText={setDepositAmount}
@@ -309,17 +717,16 @@ export default function ClientDashboard() {
             <TouchableOpacity 
               onPress={handleDepositFunds}
               disabled={isProcessingPayment}
-              className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl items-center flex-row justify-center shadow-lg border border-emerald-500"
+              className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center flex-row justify-center shadow-lg border border-emerald-500"
             >
               {isProcessingPayment ? (
                 <ActivityIndicator color="#white" size="small" className="mr-2" />
               ) : null}
-              <Text className="text-white font-bold text-lg">Confirm & Authorize MoMo</Text>
+              <Text className="text-white font-bold text-sm">Confirm & Authorize MoMo</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-      <View className="h-10" />
-    </ScrollView>
+    </View>
   );
 }

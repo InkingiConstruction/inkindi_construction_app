@@ -11,7 +11,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -20,22 +20,13 @@ import {
   ImageBackground, 
   ScrollView, 
   ActivityIndicator,
-  Alert 
+  Alert,
+  Switch
 } from 'react-native';
 import { useAuth, AuthStep } from '../../contexts/AuthContext';
 import { simulateExternalRegistryCheck } from '../../data/mockAdminService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/**
- * ============================================================================
- * 🔧 FUNCTION: AuthFlow
- * ============================================================================
- * WHAT IT DOES: Main hub coordinate rendering of login, signup, OTPs, and uploads
- * PARAMETERS: None
- * RETURNS: JSX.Element - Active state screen
- * WHO CALLS IT: Layout loader
- * PRINCIPLE: SOLID
- * ============================================================================
- */
 export default function AuthFlow() {
   const { 
     step, 
@@ -50,7 +41,10 @@ export default function AuthFlow() {
     handleVerifyPhone,
     handleResendOTP,
     handleUploadKYC,
-    handleAdminSimulateDecision
+    handleAdminSimulateDecision,
+    mockUsers,
+    theme,
+    toggleTheme
   } = useAuth();
 
   const [loading, setLoading] = useState(false);
@@ -67,7 +61,17 @@ export default function AuthFlow() {
 
   // Verification state
   const [otpVal, setOtpVal] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [cooldown, setCooldown] = useState(0);
+
+  // Split Digit References
+  const pin1Ref = useRef<any>(null);
+  const pin2Ref = useRef<any>(null);
+  const pin3Ref = useRef<any>(null);
+  const pin4Ref = useRef<any>(null);
+  const pin5Ref = useRef<any>(null);
+  const pin6Ref = useRef<any>(null);
+  const pinRefs = [pin1Ref, pin2Ref, pin3Ref, pin4Ref, pin5Ref, pin6Ref];
 
   // KYC States
   const [idCardUri, setIdCardUri] = useState('');
@@ -89,34 +93,74 @@ export default function AuthFlow() {
   const triggerResend = () => {
     handleResendOTP();
     setCooldown(30);
+    setOtpDigits(['', '', '', '', '', '']);
+    setOtpVal('');
     Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully (Hint: 123456).');
   };
 
-  /**
-   * ============================================================================
-   * 🔧 FUNCTION: maskEmailAddress
-   * ============================================================================
-   * WHAT IT DOES: Masks the email except first 2 characters for security
-   * PARAMETERS:
-   *   - raw (string) : full email string
-   * RETURNS: string - masked email
-   * WHO CALLS IT: verify-email screen renderer
-   * PRINCIPLE: DRY
-   * ============================================================================
-   */
-  const maskEmailAddress = (raw: string): string => {
-    if (!raw || !raw.includes('@')) return 'gr****@gmail.com';
-    const [name, domain] = raw.split('@');
-    if (name.length <= 2) return `${name}****@${domain}`;
-    return `${name.slice(0, 2)}****@${domain}`;
+  const handleOtpDigitChange = (val: string, idx: number) => {
+    const cleanVal = val.replace(/[^0-9]/g, '');
+    const newDigits = [...otpDigits];
+    newDigits[idx] = cleanVal;
+    setOtpDigits(newDigits);
+    setOtpVal(newDigits.join(''));
+
+    // Move focus forward
+    if (cleanVal && idx < 5) {
+      pinRefs[idx + 1].current?.focus();
+    }
   };
 
-  /**
-   * 🧱 CODE BLOCK: Handle Registration Submit
-   * WHAT IT IS DOING: Validates parameters, updates UI loader, invokes context registration
-   * WHY IT IS HERE  : Business rule validation rules REG-01 through REG-11
-   * PRINCIPLE       : KISS
-   */
+const handleLogout = async () => {
+  try {
+    setLoading(true);
+
+    await AsyncStorage.removeMany([
+      'token',
+      'user',
+      'refreshToken',
+    ]);
+
+    setStep('landing');
+    setRole(null);
+
+    Alert.alert('Logged out', 'You have been successfully logged out.');
+  } catch (error) {
+    console.log('Logout error:', error);
+    Alert.alert('Error', 'Failed to logout. Try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleOtpKeyPress = (e: any, idx: number) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      if (!otpDigits[idx] && idx > 0) {
+        const newDigits = [...otpDigits];
+        newDigits[idx - 1] = '';
+        setOtpDigits(newDigits);
+        setOtpVal(newDigits.join(''));
+        pinRefs[idx - 1].current?.focus();
+      }
+    }
+  };
+
+  const maskEmailAddress = (emailStr: string) => {
+    if (!emailStr) return '';
+    const parts = emailStr.split('@');
+    if (parts.length !== 2) return emailStr;
+    const name = parts[0];
+    const domain = parts[1];
+    if (name.length <= 2) return `**@${domain}`;
+    return `${name.substring(0, 2)}***@${domain}`;
+  };
+
+  const maskPhoneNumber = (phoneStr: string) => {
+    if (!phoneStr) return '';
+    if (phoneStr.length < 5) return phoneStr;
+    return `${phoneStr.substring(0, 4)}***${phoneStr.substring(phoneStr.length - 3)}`;
+  };
+
   const submitRegistration = async () => {
     setErrorMsg('');
     if (!fullName || !regEmail || !regPhone || !password) {
@@ -141,6 +185,8 @@ export default function AuthFlow() {
       setRegPhone('');
       setPassword('');
       setConfirmPassword('');
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpVal('');
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed.');
     } finally {
@@ -148,12 +194,6 @@ export default function AuthFlow() {
     }
   };
 
-  /**
-   * 🧱 CODE BLOCK: Handle Login Submit
-   * WHAT IT IS DOING: Authenticates using credentials, triggers OTP verification or dashboard
-   * WHY IT IS HERE  : Authentication entry point
-   * PRINCIPLE       : KISS
-   */
   const submitLogin = async () => {
     setErrorMsg('');
     if (!loginEmail || !loginPass) {
@@ -177,12 +217,6 @@ export default function AuthFlow() {
     }
   };
 
-  /**
-   * 🧱 CODE BLOCK: Validate Email OTP Code
-   * WHAT IT IS DOING: Confirms standard 6-digit format and verifies with auth manager
-   * WHY IT IS HERE  : OTP-01 through OTP-06 validation compliance
-   * PRINCIPLE       : KISS
-   */
   const submitEmailOTP = async () => {
     setErrorMsg('');
     if (otpVal.length !== 6) {
@@ -195,6 +229,7 @@ export default function AuthFlow() {
       const match = await handleVerifyEmail(otpVal);
       if (match) {
         setOtpVal('');
+        setOtpDigits(['', '', '', '', '', '']);
       } else {
         setErrorMsg('Invalid code entered. Use 123456 for simulator.');
       }
@@ -205,12 +240,6 @@ export default function AuthFlow() {
     }
   };
 
-  /**
-   * 🧱 CODE BLOCK: Validate Phone OTP Code
-   * WHAT IT IS DOING: Submits phone verification code
-   * WHY IT IS HERE  : Dual verification policy
-   * PRINCIPLE       : KISS
-   */
   const submitPhoneOTP = async () => {
     setErrorMsg('');
     if (otpVal.length !== 6) {
@@ -223,159 +252,114 @@ export default function AuthFlow() {
       const match = await handleVerifyPhone(otpVal);
       if (match) {
         setOtpVal('');
+        setOtpDigits(['', '', '', '', '', '']);
       } else {
-        setErrorMsg('Invalid code entered. Use 123456 for simulator.');
+        setErrorMsg('Invalid code. Try 123456.');
       }
     } catch (err) {
-      setErrorMsg('Verification failed.');
+      setErrorMsg('Phone verification failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * 🧱 CODE BLOCK: Verify Professional License check
-   * WHAT IT IS DOING: Checks engineer license against online registry simulator
-   * WHY IT IS HERE  : Auto validation of qualified engineers
-   * PRINCIPLE       : SOLID
-   */
-  const checkProfessionalLicense = async () => {
+  const handleVerifyLicenseExternally = () => {
     if (!licenseId) {
-      Alert.alert('Input License', 'Please type in a license code (Example format: IER-2026-123).');
+      Alert.alert('Missing ID', 'Please enter a valid IER / Professional license ID first.');
       return;
     }
     setLoading(true);
-    const valid = await simulateExternalRegistryCheck(licenseId);
-    setIsLicenseValid(valid);
-    setLoading(false);
-    if (valid) {
-      setLicenseUri('https://res.cloudinary.com/demo/image/upload/license');
-      Alert.alert('Valid License', 'License verified successfully in IER portal database!');
-    } else {
-      Alert.alert('Invalid License', 'License was not found. Must start with "IER-2026-" for this simulation.');
-    }
+    setTimeout(() => {
+      setLoading(false);
+      const reg = simulateExternalRegistryCheck(licenseId);
+      if (reg) {
+        setIsLicenseValid(true);
+        Alert.alert('Registry Match Found!', `Verified: ${useAuth.name}\nStatus: Active license\nRegistration: ${reg.registrationDate}`);
+      } else {
+        setIsLicenseValid(false);
+        Alert.alert('No Match', 'License ID not found in Rwanda IER external database API.');
+      }
+    }, 1500);
   };
 
-  /**
-   * 🧱 CODE BLOCK: Submit KYC Documents payload
-   * WHAT IT IS DOING: Validates role-specific requirements, pushes files to state machine
-   * WHY IT IS HERE  : Compliance with KYC rules KYC-01 to KYC-07
-   * PRINCIPLE       : SOLID
-   */
-  const submitKYCDocuments = async () => {
+  const submitKYCDocumentation = async () => {
+    setErrorMsg('');
     if (!idCardUri) {
-      Alert.alert('Missing ID card', 'National ID or Passport photo is required for all roles.');
+      setErrorMsg('Proof of identity (National ID / Passport) is mandatory.');
       return;
     }
-
-    if (role === 'ENGINEER') {
-      if (!isLicenseValid || !licenseId) {
-        Alert.alert('License required', 'You must verify your IER professional license first.');
-        return;
-      }
-      if (!insuranceUri) {
-        Alert.alert('Insurance required', 'Professional indemnity insurance is required.');
-        return;
-      }
+    if ((role === 'ENGINEER' || role === 'SUPERVISOR') && !licenseUri) {
+      setErrorMsg('Professional practice certificate license is required for this role.');
+      return;
     }
-
-    if (role === 'SUPERVISOR') {
-      if (!licenseId) {
-        Alert.alert('Certificate required', 'Quality control certificate ID is required.');
-        return;
-      }
-      if (!insuranceUri) {
-        Alert.alert('Insurance required', 'Professional indemnity insurance is required.');
-        return;
-      }
-    }
-
-    if (role === 'SUPPLIER') {
-      if (!bizRegUri || !taxCertUri) {
-        Alert.alert('Documents required', 'RDB registration & RRA Tax certificates are required.');
-        return;
-      }
+    if (role === 'SUPPLIER' && !bizRegUri) {
+      setErrorMsg('Business Registration Certificate (RGB/RDB) is required.');
+      return;
     }
 
     setLoading(true);
     try {
       await handleUploadKYC({
         idCard: idCardUri,
-        license: licenseId,
+        license: licenseUri,
         insurance: insuranceUri,
         bizReg: bizRegUri,
         taxCert: taxCertUri
       });
     } catch (err) {
-      Alert.alert('Upload Failed', 'Error uploading documents to server.');
+      setErrorMsg('Failed to process documents upload.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Autocomplete file templates for quick simulation testing
-  const autoFillDocuments = () => {
-    setIdCardUri('https://res.cloudinary.com/demo/image/upload/national_id.jpg');
-    if (role === 'ENGINEER') {
-      setLicenseId('IER-2026-8942');
-      setIsLicenseValid(true);
-      setLicenseUri('https://res.cloudinary.com/demo/image/upload/ier_license.pdf');
-      setInsuranceUri('https://res.cloudinary.com/demo/image/upload/indemnity_insurance.pdf');
-    } else if (role === 'SUPERVISOR') {
-      setLicenseId('SUP-QC-4019');
-      setInsuranceUri('https://res.cloudinary.com/demo/image/upload/indemnity_insurance.pdf');
-    } else if (role === 'SUPPLIER') {
-      setBizRegUri('https://res.cloudinary.com/demo/image/upload/rdb_biz_reg.pdf');
-      setTaxCertUri('https://res.cloudinary.com/demo/image/upload/rra_tax_compliance.pdf');
-    }
+  // Theme support styles
+  const isDark = theme === 'dark';
+  const colors = {
+    bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
+    text: isDark ? 'text-white' : 'text-slate-900',
+    textSecondary: isDark ? 'text-slate-300' : 'text-slate-700',
+    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    card: isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm',
+    input: isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-350 text-slate-900',
   };
 
-  /**
-   * 🧱 CODE BLOCK: Landing screen UI renderer
-   * WHAT IT IS DOING: Renders the hero background screen with overlays, texts, and buttons
-   * WHY IT IS HERE  : Stunning high premium landing visual experience
-   * PRINCIPLE       : KISS
-   */
+  // 1. LANDING SCREEN (Always Dark cover themed)
   if (step === 'landing') {
     return (
       <ImageBackground
         source={require('../../../assets/inkingi-banner.jpg')}
         className="flex-1"
-        resizeMode="cover"
       >
-        {/* Dark opacity overlay */}
-        <View className="flex-1 bg-black/60 justify-between px-6 py-16">
-          {/* Top Spacing */}
-          <View />
-
-          {/* Logo & Headline */}
-          <View className="items-center">
-            {/* Center Logo/Icon */}
-            <View className="w-20 h-20 bg-emerald-600 rounded-2xl items-center justify-center mb-6 shadow-xl border border-emerald-400">
-              <Text className="text-white text-4xl font-extrabold">I</Text>
+        <View className="flex-1 bg-black/70 justify-end px-6 pb-12">
+          <View className="mb-6">
+            <View className="w-16 h-16 bg-emerald-600 rounded-3xl items-center justify-center mb-4">
+              <Text className="text-white text-3xl font-extrabold">I</Text>
             </View>
-            <Text className="text-white text-3xl font-extrabold tracking-wide mb-3 text-center">
-              Welcome to Inkingi
+            <Text className="text-white text-3xl font-extrabold leading-tight">
+              InkingiPro Build
             </Text>
-            <Text className="text-gray-200 text-base leading-6 text-center font-medium px-4">
-              Bridging trust between Diaspora investors and local construction professionals in Rwanda
+            <Text className="text-emerald-400 text-sm font-semibold tracking-wider uppercase mt-1">
+              Escrow & Onboarding Vault
+            </Text>
+            <Text className="text-slate-300 text-sm mt-3 leading-5">
+              Secure payments, digital inspections, and transparent procurement for diaspora construction investors.
             </Text>
           </View>
 
-          {/* Buttons */}
-          <View className="space-y-4">
+          <View className="space-y-3.5">
             <TouchableOpacity 
-              className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg border border-emerald-500"
-              onPress={() => setStep('register')}
+              className="bg-emerald-650 active:bg-emerald-700 py-4 rounded-2xl items-center border border-emerald-500"
+              onPress={() => setStep('login')}
             >
-              <Text className="text-white text-center font-bold text-lg">Create Account</Text>
+              <Text className="text-white font-bold text-base">Sign In to Dashboard</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              className="bg-white/10 active:bg-white/20 py-4 rounded-xl border border-white/20"
-              onPress={() => setStep('login')}
+              className="bg-white/10 active:bg-white/20 py-4 rounded-2xl items-center border border-white/20"
+              onPress={() => setStep('register')}
             >
-              <Text className="text-white text-center font-bold text-lg">Login</Text>
+              <Text className="text-white font-bold text-base">Create Onboarding Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -383,37 +367,44 @@ export default function AuthFlow() {
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: Login screen UI renderer
-   * WHAT IT IS DOING: Renders standard login forms
-   * WHY IT IS HERE  : Access gate for returning profiles
-   * PRINCIPLE       : KISS
-   */
+  // 2. LOGIN SCREEN
   if (step === 'login') {
     return (
-      <View className="flex-1 bg-slate-900 justify-center px-6">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-          <View className="items-center mb-8">
-            <View className="w-16 h-16 bg-emerald-600 rounded-2xl items-center justify-center mb-4">
-              <Text className="text-white text-3xl font-extrabold">I</Text>
+      <View className={`flex-1 ${colors.bg} justify-center px-6 pt-10`}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          {/* Header Switch */}
+          <View className="flex-row justify-between items-center mb-6">
+            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
+              <Text className="text-emerald-500 font-bold text-lg">←</Text>
+            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
+              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
             </View>
-            <Text className="text-white text-2xl font-bold text-center">Login to your account</Text>
-            <Text className="text-slate-400 mt-2 text-center">Enter your registered email and password</Text>
+          </View>
+
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-600 rounded-2xl items-center justify-center mb-3">
+              <Text className="text-white text-2xl font-black">I</Text>
+            </View>
+            <Text className={`${colors.text} text-xl font-bold text-center`}>Login to your account</Text>
+            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Enter your registered email and password</Text>
           </View>
 
           {errorMsg ? (
             <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-sm font-medium">{errorMsg}</Text>
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
           <View className="space-y-4 mb-6">
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Email</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1.5 ml-1`}>Email Address</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3.5 text-base focus:border-emerald-500"
+                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
                 placeholder="email@example.com"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#94a3b8"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={loginEmail}
@@ -422,16 +413,16 @@ export default function AuthFlow() {
             </View>
 
             <View>
-              <View className="flex-row justify-between mb-2">
-                <Text className="text-slate-300 text-sm font-semibold ml-1">Password</Text>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className={`${colors.textSecondary} text-xs font-bold ml-1`}>Password</Text>
                 <TouchableOpacity onPress={() => setStep('forgot-password')}>
-                  <Text className="text-emerald-400 text-sm font-medium mr-1">Forgot Password?</Text>
+                  <Text className="text-emerald-500 text-xs font-bold mr-1">Forgot?</Text>
                 </TouchableOpacity>
               </View>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3.5 text-base focus:border-emerald-500"
+                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
                 placeholder="••••••••"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#94a3b8"
                 secureTextEntry
                 autoCapitalize="none"
                 value={loginPass}
@@ -441,91 +432,109 @@ export default function AuthFlow() {
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg flex-row justify-center items-center"
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
             onPress={submitLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-lg">Sign In</Text>
+            <Text className="text-white text-center font-bold text-sm">Sign In</Text>
           </TouchableOpacity>
 
-          <View className="flex-row justify-center mt-6">
-            <Text className="text-slate-400 text-sm">Don't have an account? </Text>
+          <View className="flex-row justify-center mt-5">
+            <Text className={`${colors.textMuted} text-xs`}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => setStep('register')}>
-              <Text className="text-emerald-400 text-sm font-bold">Sign Up</Text>
+              <Text className="text-emerald-500 text-xs font-bold">Sign Up</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Quick-Access Seeded Credentials Drawer */}
+          <View className="bg-slate-200/50 dark:bg-slate-800/40 p-4 rounded-2xl mt-6 border border-slate-300/30 dark:border-slate-700/30">
+            <Text className="text-slate-600 dark:text-emerald-400 font-bold text-[11px] uppercase tracking-wider mb-2">⚡ Tester Autofill Panel</Text>
+            <Text className="text-slate-500 text-[10px] mb-3">Click any pre-seeded profile below to instantly load credentials:</Text>
+            <View className="space-y-2">
+              {mockUsers.map(u => (
+                <TouchableOpacity
+                  key={u.id}
+                  onPress={() => {
+                    setLoginEmail(u.email);
+                    setLoginPass(u.password || 'password123');
+                  }}
+                  className="bg-white/80 dark:bg-slate-900/60 p-2 rounded-xl flex-row justify-between items-center border border-slate-300/20"
+                >
+                  <View>
+                    <Text className="text-[10px] text-slate-800 dark:text-white font-bold">{u.name} ({u.role})</Text>
+                    <Text className="text-[9px] text-slate-500 font-mono mt-0.5">{u.email}</Text>
+                  </View>
+                  <Text className="text-emerald-500 text-[10px] font-bold">Autofill ➔</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </ScrollView>
       </View>
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: Registration screen UI renderer
-   * WHAT IT IS DOING: Renders the signup flow with fields: Full Name, Email, Phone, Password, and Role selection
-   * WHY IT IS HERE  : Self-service account onboarding entry point
-   * PRINCIPLE       : KISS
-   */
+  // 3. REGISTER SCREEN
   if (step === 'register') {
     return (
-      <View className="flex-1 bg-slate-900 justify-center px-6">
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingVertical: 20 }}>
-          <View className="items-center mb-6">
-            <View className="w-14 h-14 bg-emerald-600 rounded-xl items-center justify-center mb-3">
-              <Text className="text-white text-2xl font-extrabold">I</Text>
+      <View className={`flex-1 ${colors.bg} justify-center px-6 pt-12`}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="flex-row justify-between items-center mb-6">
+            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
+              <Text className="text-emerald-500 font-bold text-lg">←</Text>
+            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
+              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
             </View>
-            <Text className="text-white text-2xl font-bold text-center">Create your account</Text>
-            <Text className="text-slate-400 text-sm mt-1 text-center">Select your profile category and start onboarding</Text>
+          </View>
+
+          <View className="items-center mb-6">
+            <Text className={`${colors.text} text-xl font-bold`}>Create Onboarding Profile</Text>
+            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Choose your structural ecosystem role and sign up</Text>
+          </View>
+
+          {/* Role Pill Switcher */}
+          <View className="flex-row bg-slate-200 dark:bg-slate-800 p-1 rounded-xl mb-5 gap-1">
+            {(['CLIENT', 'ENGINEER', 'SUPERVISOR', 'SUPPLIER'] as const).map(r => (
+              <TouchableOpacity
+                key={r}
+                onPress={() => setRole(r)}
+                className={`flex-1 py-2 rounded-lg items-center ${role === r ? 'bg-emerald-650 shadow-sm' : 'bg-transparent'}`}
+              >
+                <Text className={`text-[10px] font-extrabold ${role === r ? 'text-white' : colors.textMuted}`}>{r}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {errorMsg ? (
             <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-sm font-medium">{errorMsg}</Text>
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
-          <View className="space-y-4 mb-6">
-            {/* Role dropdown options */}
+          <View className="space-y-3 mb-6">
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Choose Role</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {(['CLIENT', 'ENGINEER', 'SUPERVISOR', 'SUPPLIER'] as const).map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    onPress={() => setRole(r)}
-                    className={`px-4 py-2.5 rounded-lg border text-sm font-medium ${
-                      role === r 
-                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' 
-                        : 'bg-slate-800 border-slate-700 text-slate-400'
-                    }`}
-                  >
-                    <Text className={role === r ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>
-                      {r.charAt(0) + r.slice(1).toLowerCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Full Name</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Full Name / Company Name</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-base focus:border-emerald-500"
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
                 placeholder="Grace Uwase"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#94a3b8"
                 value={fullName}
                 onChangeText={setFullName}
               />
             </View>
 
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Email</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Email Address</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-base focus:border-emerald-500"
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
                 placeholder="grace.uwase@example.com"
-                placeholderTextColor="#64748b"
+                placeholderTextColor="#94a3b8"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={regEmail}
@@ -534,11 +543,11 @@ export default function AuthFlow() {
             </View>
 
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Phone Number (Rwanda format)</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>MTN MoMo Mobile Number</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-base focus:border-emerald-500"
-                placeholder="+250788123456"
-                placeholderTextColor="#64748b"
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="+250788100000"
+                placeholderTextColor="#94a3b8"
                 keyboardType="phone-pad"
                 value={regPhone}
                 onChangeText={setRegPhone}
@@ -546,11 +555,11 @@ export default function AuthFlow() {
             </View>
 
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Password</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Create Password</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-base focus:border-emerald-500"
-                placeholder="Minimum 8 characters"
-                placeholderTextColor="#64748b"
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="•••••••• (Min 8 chars)"
+                placeholderTextColor="#94a3b8"
                 secureTextEntry
                 autoCapitalize="none"
                 value={password}
@@ -559,11 +568,11 @@ export default function AuthFlow() {
             </View>
 
             <View>
-              <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Confirm Password</Text>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Confirm Password</Text>
               <TextInput
-                className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-base focus:border-emerald-500"
-                placeholder="Confirm password"
-                placeholderTextColor="#64748b"
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="••••••••"
+                placeholderTextColor="#94a3b8"
                 secureTextEntry
                 autoCapitalize="none"
                 value={confirmPassword}
@@ -573,20 +582,20 @@ export default function AuthFlow() {
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg flex-row justify-center items-center"
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
             onPress={submitRegistration}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-lg">Continue</Text>
+            <Text className="text-white text-center font-bold text-sm">Register Account</Text>
           </TouchableOpacity>
 
-          <View className="flex-row justify-center mt-6">
-            <Text className="text-slate-400 text-sm">Already have an account? </Text>
+          <View className="flex-row justify-center mt-5">
+            <Text className={`${colors.textMuted} text-xs`}>Already have an account? </Text>
             <TouchableOpacity onPress={() => setStep('login')}>
-              <Text className="text-emerald-400 text-sm font-bold">Sign In</Text>
+              <Text className="text-emerald-500 text-xs font-bold">Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -594,130 +603,91 @@ export default function AuthFlow() {
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: Forgot Password renderer
-   * WHAT IT IS DOING: Takes user email and sends code
-   * WHY IT IS HERE  : Standard self password recover logic
-   * PRINCIPLE       : KISS
-   */
-  if (step === 'forgot-password') {
-    return (
-      <View className="flex-1 bg-slate-900 justify-center px-6">
-        <View className="items-center mb-8">
-          <Text className="text-white text-3xl font-extrabold mb-3">Reset Password</Text>
-          <Text className="text-slate-400 text-center">
-            Enter your email address and we'll send a 6-digit OTP code to verify identity
-          </Text>
-        </View>
-
-        <View className="mb-6">
-          <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1">Email Address</Text>
-          <TextInput
-            className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3.5 text-base focus:border-emerald-500"
-            placeholder="email@example.com"
-            placeholderTextColor="#64748b"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <TouchableOpacity 
-          className="bg-emerald-600 py-4 rounded-xl shadow-lg mb-4"
-          onPress={() => {
-            Alert.alert('OTP Sent', 'Password reset code has been sent successfully (Hint: 123456).');
-            setStep('verify-email');
-          }}
-        >
-          <Text className="text-white text-center font-bold text-lg">Send Verification Code</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          className="py-2.5"
-          onPress={() => setStep('login')}
-        >
-          <Text className="text-slate-400 text-center text-sm font-bold">Back to Login</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  /**
-   * 🧱 CODE BLOCK: Email verification OTP entry UI renderer
-   * WHAT IT IS DOING: Generates chevron navigation, visual mask, and OTP input box
-   * WHY IT IS HERE  : Email confirmation rules
-   * PRINCIPLE       : KISS
-   */
+  // 4. VERIFY EMAIL (Custom requested Centered Header with Left Checkground only + 6 Split Digit Inputs)
   if (step === 'verify-email') {
     return (
-      <View className="flex-1 bg-slate-900 px-6 pt-16">
-        {/* Back header */}
-        <TouchableOpacity 
-          className="flex-row items-center mb-6" 
-          onPress={() => setStep('landing')}
-        >
-          <Text className="text-emerald-400 text-xl font-bold">←</Text>
-          <Text className="text-emerald-400 text-sm font-semibold ml-2">Back</Text>
-        </TouchableOpacity>
+      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
+        
+        {/* Custom centered Header with only Left Checkground back button */}
+        <View className="flex-row items-center justify-between mb-8 h-12 relative">
+          <TouchableOpacity 
+            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
+            onPress={() => setStep('landing')}
+          >
+            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+          </TouchableOpacity>
+          <View className="flex-1 items-center justify-center">
+            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your email</Text>
+          </View>
+          <View className="w-10 h-10 absolute right-0" /> {/* Spacer */}
+        </View>
 
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }}>
-          <View className="items-center mb-8">
-            <View className="w-16 h-16 bg-slate-800 rounded-full items-center justify-center mb-4 border border-emerald-500/20">
-              <Text className="text-emerald-400 text-2xl">✉</Text>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
+              <Text className="text-emerald-500 text-xl">✉</Text>
             </View>
-            <Text className="text-white text-2xl font-bold mb-2">Verify your email</Text>
-            <Text className="text-slate-400 text-center px-4 leading-5">
+            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
               We've sent a 6-digit OTP code to verify your account registration.
             </Text>
           </View>
 
           {errorMsg ? (
             <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-sm font-medium">{errorMsg}</Text>
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
           {/* Masked display box */}
-          <View className="bg-slate-800/50 border border-slate-700 rounded-xl py-3 px-4 flex-row items-center justify-between mb-6">
-            <Text className="text-slate-300 font-semibold text-base">{maskEmailAddress(email)}</Text>
-            <View className="bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-              <Text className="text-emerald-400 text-xs font-semibold">Verification Code Sent</Text>
+          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
+            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskEmailAddress(email)}</Text>
+            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <Text className="text-emerald-500 text-[10px] font-semibold">OTP Code Sent</Text>
             </View>
           </View>
 
+          {/* 6 Split Digits Input Layout */}
           <View className="mb-6">
-            <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1 text-center">
+            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
               Enter 6-Digit OTP (Hint: 123456)
             </Text>
-            <TextInput
-              className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[8px] focus:border-emerald-500"
-              placeholder="000000"
-              placeholderTextColor="#475569"
-              maxLength={6}
-              keyboardType="number-pad"
-              value={otpVal}
-              onChangeText={setOtpVal}
-            />
+            
+            <View className="flex-row justify-between mb-4 px-2 gap-2">
+              {pinRefs.map((ref, idx) => (
+                <TextInput
+                  key={idx}
+                  ref={ref}
+                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  maxLength={1}
+                  keyboardType="number-pad"
+                  value={otpDigits[idx]}
+                  onChangeText={(val) => handleOtpDigitChange(val, idx)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                />
+              ))}
+            </View>
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg flex-row justify-center items-center mb-6"
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
             onPress={submitEmailOTP}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-lg">Verify Email</Text>
+            <Text className="text-white text-center font-bold text-sm">Verify Email</Text>
           </TouchableOpacity>
 
           <View className="items-center">
-            <Text className="text-slate-400 text-sm">Didn't receive a code?</Text>
+            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
             <TouchableOpacity 
               onPress={triggerResend}
               disabled={cooldown > 0}
               className="mt-2"
             >
-              <Text className={`font-bold text-sm ${cooldown > 0 ? 'text-slate-600' : 'text-emerald-400'}`}>
+              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
                 {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
               </Text>
             </TouchableOpacity>
@@ -727,83 +697,89 @@ export default function AuthFlow() {
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: Verify Phone (SMS OTP) UI renderer
-   * WHAT IT IS DOING: Renders OTP field for phone confirmation
-   * WHY IT IS HERE  : Rwanda phone verification workflow
-   * PRINCIPLE       : KISS
-   */
+  // 5. VERIFY PHONE SCREEN
   if (step === 'verify-phone') {
     return (
-      <View className="flex-1 bg-slate-900 px-6 pt-16">
-        <TouchableOpacity 
-          className="flex-row items-center mb-6" 
-          onPress={() => setStep('verify-email')}
-        >
-          <Text className="text-emerald-400 text-xl font-bold">←</Text>
-          <Text className="text-emerald-400 text-sm font-semibold ml-2">Back</Text>
-        </TouchableOpacity>
+      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
+        <View className="flex-row items-center justify-between mb-8 h-12 relative">
+          <TouchableOpacity 
+            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
+            onPress={() => setStep('landing')}
+          >
+            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+          </TouchableOpacity>
+          <View className="flex-1 items-center justify-center">
+            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your phone</Text>
+          </View>
+          <View className="w-10 h-10 absolute right-0" />
+        </View>
 
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }}>
-          <View className="items-center mb-8">
-            <View className="w-16 h-16 bg-slate-800 rounded-full items-center justify-center mb-4 border border-emerald-500/20">
-              <Text className="text-emerald-400 text-2xl">📱</Text>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
+              <Text className="text-emerald-500 text-xl">📱</Text>
             </View>
-            <Text className="text-white text-2xl font-bold mb-2">Verify your phone</Text>
-            <Text className="text-slate-400 text-center px-4 leading-5">
-              An SMS containing your verification code was sent to:
+            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
+              We've issued a 6-digit verification code to your Rwanda MTN partner number.
             </Text>
           </View>
 
           {errorMsg ? (
             <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-sm font-medium">{errorMsg}</Text>
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
-          {/* Masked display box */}
-          <View className="bg-slate-800/50 border border-slate-700 rounded-xl py-3 px-4 flex-row items-center justify-between mb-6">
-            <Text className="text-slate-300 font-semibold text-base">{phone || '+250 788 ••• ••1'}</Text>
-            <View className="bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">
-              <Text className="text-emerald-400 text-xs font-semibold">SMS Sent</Text>
+          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
+            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskPhoneNumber(phone)}</Text>
+            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <Text className="text-emerald-500 text-[10px] font-semibold">SMS Transmitted</Text>
             </View>
           </View>
 
+          {/* 6 Split Digits Input Layout */}
           <View className="mb-6">
-            <Text className="text-slate-300 text-sm font-semibold mb-2 ml-1 text-center">
+            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
               Enter 6-Digit OTP (Hint: 123456)
             </Text>
-            <TextInput
-              className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[8px] focus:border-emerald-500"
-              placeholder="000000"
-              placeholderTextColor="#475569"
-              maxLength={6}
-              keyboardType="number-pad"
-              value={otpVal}
-              onChangeText={setOtpVal}
-            />
+            
+            <View className="flex-row justify-between mb-4 px-2 gap-2">
+              {pinRefs.map((ref, idx) => (
+                <TextInput
+                  key={idx}
+                  ref={ref}
+                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  maxLength={1}
+                  keyboardType="number-pad"
+                  value={otpDigits[idx]}
+                  onChangeText={(val) => handleOtpDigitChange(val, idx)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                />
+              ))}
+            </View>
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg flex-row justify-center items-center mb-6"
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
             onPress={submitPhoneOTP}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-lg">Verify Phone</Text>
+            <Text className="text-white text-center font-bold text-sm">Verify Phone</Text>
           </TouchableOpacity>
 
           <View className="items-center">
-            <Text className="text-slate-400 text-sm">Didn't receive an SMS?</Text>
+            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
             <TouchableOpacity 
               onPress={triggerResend}
               disabled={cooldown > 0}
               className="mt-2"
             >
-              <Text className={`font-bold text-sm ${cooldown > 0 ? 'text-slate-600' : 'text-emerald-400'}`}>
-                {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend SMS'}
+              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
+                {cooldown > 0 ? `Resend SMS in ${cooldown}s` : 'Resend SMS'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -812,288 +788,171 @@ export default function AuthFlow() {
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: KYC Document Upload screen UI renderer
-   * WHAT IT IS DOING: Generates responsive layout containing role specific upload inputs
-   * WHY IT IS HERE  : Flexible compliance rules based on customer profiles
-   * PRINCIPLE       : SOLID
-   */
+  // 6. KYC DOCUMENTATION UPLOAD SCREEN
   if (step === 'kyc-upload') {
     return (
-      <View className="flex-1 bg-slate-900 px-6 pt-16">
-        {/* Header Title */}
+      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
         <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-white text-2xl font-bold">Identity Verification</Text>
-            <Text className="text-slate-400 text-sm mt-0.5">Upload requirements for your role: {role}</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={autoFillDocuments}
-            className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-lg"
-          >
-            <Text className="text-emerald-400 text-xs font-bold">🪄 Autofill Docs</Text>
+          <Text className={`${colors.text} text-lg font-bold`}>KYC Verification</Text>
+          <TouchableOpacity onPress={handleLogout} className="bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20">
+            <Text className="text-red-500 text-xs font-bold">Logout</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          <View className="space-y-6">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <Text className={`${colors.textSecondary} text-xs mb-5 leading-5`}>
+            To protect investor escrow funds and comply with financial regulations in Rwanda, please attach structural certifications.
+          </Text>
+
+          {errorMsg ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            </View>
+          ) : null}
+
+          <View className="space-y-4 mb-6">
             
-            {/* Core Requirement: National ID (For all roles) */}
-            <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-              <View className="flex-row items-center mb-3">
-                <Text className="text-emerald-400 text-lg mr-2">📌</Text>
-                <Text className="text-white font-bold text-base">National ID or Passport</Text>
-              </View>
-              <Text className="text-slate-400 text-sm mb-4">
-                Please upload a clear scanned color copy or photo of your official government issue identification.
-              </Text>
+            {/* Identity Proof (All roles) */}
+            <View className={`p-4 rounded-2xl border ${colors.card} space-y-2`}>
+              <Text className={`${colors.text} text-xs font-bold`}>1. National ID / Passport Photo</Text>
               
               {idCardUri ? (
-                <View className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex-row items-center justify-between">
-                  <Text className="text-emerald-400 text-sm font-semibold truncate flex-1">📄 national_id_scan.jpg</Text>
+                <View className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 flex-row justify-between items-center">
+                  <Text className="text-emerald-500 font-bold text-[10px]">✓ id_passport.jpg Attached</Text>
                   <TouchableOpacity onPress={() => setIdCardUri('')}>
-                    <Text className="text-red-400 text-xs font-bold px-2 py-1">Remove</Text>
+                    <Text className="text-red-500 text-[10px] font-bold">Delete</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity 
-                  onPress={() => setIdCardUri('https://res.cloudinary.com/demo/image/upload/id')}
-                  className="bg-slate-900/50 border border-dashed border-slate-700 h-28 rounded-xl items-center justify-center active:bg-slate-800/30"
+                  onPress={() => setIdCardUri('https://res.cloudinary.com/demo/image/upload/idcard')}
+                  className="bg-slate-200/50 dark:bg-slate-800/60 h-16 border border-dashed border-slate-350 dark:border-slate-700 rounded-xl justify-center items-center"
                 >
-                  <Text className="text-slate-400 text-sm font-semibold">📷 Capture photo or Upload from gallery</Text>
-                  <Text className="text-slate-500 text-xs mt-1">PNG, JPG up to 10MB</Text>
+                  <Text className={`${colors.textMuted} text-xs font-bold`}>📷 Tap to Capture or Load ID Card</Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            {/* ENGINEER specific requirements */}
-            {role === 'ENGINEER' && (
-              <View className="space-y-6">
-                {/* IER License check */}
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">🛠️</Text>
-                    <Text className="text-white font-bold text-base">IER Professional License</Text>
-                  </View>
-                  <Text className="text-slate-400 text-sm mb-4">
-                    Enter license ID to perform an instant validation registry check with IER.
-                  </Text>
-                  
-                  <View className="flex-row gap-2 mb-4">
-                    <TextInput
-                      className="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm flex-1 focus:border-emerald-500"
-                      placeholder="IER-2026-8942"
-                      placeholderTextColor="#475569"
-                      value={licenseId}
-                      onChangeText={setLicenseId}
-                    />
-                    <TouchableOpacity 
-                      onPress={checkProfessionalLicense}
-                      className="bg-emerald-600 px-4 rounded-xl justify-center active:bg-emerald-700"
-                    >
-                      <Text className="text-white font-bold text-xs">Verify</Text>
+            {/* Engineer & Supervisor Licensure */}
+            {(role === 'ENGINEER' || role === 'SUPERVISOR') && (
+              <View className={`p-4 rounded-2xl border ${colors.card} space-y-3`}>
+                <Text className={`${colors.text} text-xs font-bold`}>2. Rwanda IER Professional Practice License</Text>
+                
+                <TextInput
+                  className={`border rounded-xl px-4 py-2.5 text-xs ${colors.input}`}
+                  placeholder="Enter License Registration Number (e.g. IER-8821)"
+                  placeholderTextColor="#94a3b8"
+                  value={licenseId}
+                  onChangeText={setLicenseId}
+                />
+
+                <TouchableOpacity 
+                  onPress={handleVerifyLicenseExternally}
+                  className="bg-emerald-600/15 border border-emerald-500/25 py-2 rounded-xl items-center"
+                >
+                  <Text className="text-emerald-500 text-xs font-bold">🔍 Run Registry Verification Check</Text>
+                </TouchableOpacity>
+
+                {licenseUri ? (
+                  <View className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 flex-row justify-between items-center">
+                    <Text className="text-emerald-500 font-bold text-[10px]">✓ license_certificate.jpg Attached</Text>
+                    <TouchableOpacity onPress={() => setLicenseUri('')}>
+                      <Text className="text-red-500 text-[10px] font-bold">Delete</Text>
                     </TouchableOpacity>
                   </View>
-
-                  {isLicenseValid === true ? (
-                    <View className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex-row items-center">
-                      <Text className="text-emerald-400 text-sm font-semibold">✓ License confirmed valid inside IER Registry.</Text>
-                    </View>
-                  ) : isLicenseValid === false ? (
-                    <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex-row items-center">
-                      <Text className="text-red-400 text-sm font-semibold">✗ Verification failed. Try again.</Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                {/* Indemnity Insurance */}
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">🛡️</Text>
-                    <Text className="text-white font-bold text-base">Professional Indemnity Insurance</Text>
-                  </View>
-                  <Text className="text-slate-400 text-sm mb-4">
-                    Provide certificate confirming liability cover of minimum 10M RWF.
-                  </Text>
-
-                  {insuranceUri ? (
-                    <View className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex-row items-center justify-between">
-                      <Text className="text-emerald-400 text-sm font-semibold flex-1">📄 insurance_policy.pdf</Text>
-                      <TouchableOpacity onPress={() => setInsuranceUri('')}>
-                        <Text className="text-red-400 text-xs font-bold px-2 py-1">Remove</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity 
-                      onPress={() => setInsuranceUri('https://res.cloudinary.com/demo/image/upload/insurance')}
-                      className="bg-slate-900/50 border border-dashed border-slate-700 h-24 rounded-xl items-center justify-center active:bg-slate-800/30"
-                    >
-                      <Text className="text-slate-400 text-sm font-semibold">📷 Upload Policy Document</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                ) : (
+                  <TouchableOpacity 
+                    onPress={() => setLicenseUri('https://res.cloudinary.com/demo/image/upload/license')}
+                    className="bg-slate-200/50 dark:bg-slate-800/60 h-16 border border-dashed border-slate-350 dark:border-slate-700 rounded-xl justify-center items-center"
+                  >
+                    <Text className={`${colors.textMuted} text-xs font-bold`}>📷 Upload License Scan</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
-            {/* SUPERVISOR specific requirements */}
-            {role === 'SUPERVISOR' && (
-              <View className="space-y-6">
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">🎓</Text>
-                    <Text className="text-white font-bold text-base">QC Inspection Certificate</Text>
-                  </View>
-                  <Text className="text-slate-400 text-sm mb-4">
-                    Provide your professional registration/certifying reference number.
-                  </Text>
-                  <TextInput
-                    className="bg-slate-900 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:border-emerald-500 mb-2"
-                    placeholder="SUP-QC-4019"
-                    placeholderTextColor="#475569"
-                    value={licenseId}
-                    onChangeText={setLicenseId}
-                  />
-                </View>
-
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">🛡️</Text>
-                    <Text className="text-white font-bold text-base">Indemnity Liability Insurance</Text>
-                  </View>
-                  {insuranceUri ? (
-                    <View className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex-row items-center justify-between">
-                      <Text className="text-emerald-400 text-sm font-semibold flex-1">📄 insurance_policy.pdf</Text>
-                      <TouchableOpacity onPress={() => setInsuranceUri('')}>
-                        <Text className="text-red-400 text-xs font-bold px-2 py-1">Remove</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity 
-                      onPress={() => setInsuranceUri('https://res.cloudinary.com/demo/image/upload/insurance')}
-                      className="bg-slate-900/50 border border-dashed border-slate-700 h-24 rounded-xl items-center justify-center active:bg-slate-800/30"
-                    >
-                      <Text className="text-slate-400 text-sm font-semibold">📷 Upload Policy Document</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* SUPPLIER specific requirements */}
+            {/* Supplier Business Registration */}
             {role === 'SUPPLIER' && (
-              <View className="space-y-6">
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">🏢</Text>
-                    <Text className="text-white font-bold text-base">Business Registration Certificate (RDB)</Text>
-                  </View>
-                  {bizRegUri ? (
-                    <View className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex-row items-center justify-between">
-                      <Text className="text-emerald-400 text-sm font-semibold flex-1">📄 rdb_registration.pdf</Text>
-                      <TouchableOpacity onPress={() => setBizRegUri('')}>
-                        <Text className="text-red-400 text-xs font-bold px-2 py-1">Remove</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity 
-                      onPress={() => setBizRegUri('https://res.cloudinary.com/demo/image/upload/biz')}
-                      className="bg-slate-900/50 border border-dashed border-slate-700 h-24 rounded-xl items-center justify-center active:bg-slate-800/30"
-                    >
-                      <Text className="text-slate-400 text-sm font-semibold">📷 Upload RDB Document</Text>
+              <View className={`p-4 rounded-2xl border ${colors.card} space-y-2`}>
+                <Text className={`${colors.text} text-xs font-bold`}>2. Business Registration Certificate (RGB/RDB)</Text>
+                
+                {bizRegUri ? (
+                  <View className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 flex-row justify-between items-center">
+                    <Text className="text-emerald-500 font-bold text-[10px]">✓ rgb_registration.pdf Attached</Text>
+                    <TouchableOpacity onPress={() => setBizRegUri('')}>
+                      <Text className="text-red-500 text-[10px] font-bold">Delete</Text>
                     </TouchableOpacity>
-                  )}
-                </View>
-
-                <View className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4">
-                  <View className="flex-row items-center mb-3">
-                    <Text className="text-emerald-400 text-lg mr-2">📊</Text>
-                    <Text className="text-white font-bold text-base">Tax Compliance Certificate (RRA)</Text>
                   </View>
-                  {taxCertUri ? (
-                    <View className="bg-slate-900 border border-slate-700 p-3 rounded-xl flex-row items-center justify-between">
-                      <Text className="text-emerald-400 text-sm font-semibold flex-1">📄 rra_tax_compliance.pdf</Text>
-                      <TouchableOpacity onPress={() => setTaxCertUri('')}>
-                        <Text className="text-red-400 text-xs font-bold px-2 py-1">Remove</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity 
-                      onPress={() => setTaxCertUri('https://res.cloudinary.com/demo/image/upload/tax')}
-                      className="bg-slate-900/50 border border-dashed border-slate-700 h-24 rounded-xl items-center justify-center active:bg-slate-800/30"
-                    >
-                      <Text className="text-slate-400 text-sm font-semibold">📷 Upload RRA Certificate</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                ) : (
+                  <TouchableOpacity 
+                    onPress={() => setBizRegUri('https://res.cloudinary.com/demo/image/upload/bizreg')}
+                    className="bg-slate-200/50 dark:bg-slate-800/60 h-16 border border-dashed border-slate-350 dark:border-slate-700 rounded-xl justify-center items-center"
+                  >
+                    <Text className={`${colors.textMuted} text-xs font-bold`}>📷 Attach RDB/RGB Certificate</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
-
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-4 rounded-xl shadow-lg mt-8 flex-row justify-center items-center"
-            onPress={submitKYCDocuments}
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
+            onPress={submitKYCDocumentation}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-lg">Submit for Verification</Text>
+            <Text className="text-white text-center font-bold text-sm">Submit Documents For Review</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
     );
   }
 
-  /**
-   * 🧱 CODE BLOCK: KYC pending review UI renderer with simulation control bar
-   * WHAT IT IS DOING: Informs users documents are processing, renders interactive mock buttons
-   * WHY IT IS HERE  : Simulated admin flow lets users easily test both approval states in a mock context
-   * PRINCIPLE       : SOLID
-   */
+  // 7. KYC PENDING REVIEW SCREEN
   if (step === 'kyc-pending') {
     return (
-      <View className="flex-1 bg-slate-900 px-6 pt-20 justify-between pb-8">
-        <View />
-
-        {/* Center message info */}
-        <View className="items-center">
-          <View className="w-20 h-20 bg-slate-800 rounded-full items-center justify-center mb-6 border border-emerald-500/20 shadow-lg">
-            <Text className="text-emerald-400 text-4xl">🕒</Text>
+      <View className={`flex-1 ${colors.bg} px-6 justify-center`}>
+        <View className="items-center mb-8">
+          <View className="w-16 h-16 bg-amber-500/10 rounded-full items-center justify-center mb-4 border border-amber-500/20">
+            <Text className="text-amber-500 text-3xl font-bold">⏳</Text>
           </View>
-          <Text className="text-white text-2xl font-bold text-center mb-3">KYC Under Review</Text>
-          <Text className="text-slate-300 text-center px-4 leading-6 text-base mb-2 font-medium">
-            Your identity is being verified by our operations team.
-          </Text>
-          <Text className="text-slate-500 text-center px-8 text-sm">
-            This typically takes less than 24 hours. You will receive an email and push alert once approved.
+          <Text className={`${colors.text} text-xl font-bold text-center`}>KYC Onboarding Under Review</Text>
+          <Text className={`${colors.textMuted} text-xs mt-2 text-center px-4 leading-5`}>
+            Our compliance desk is checking your uploaded credentials against Rwanda registry databases. This generally takes less than 24 hours.
           </Text>
         </View>
 
-        {/* Admin simulator bar */}
-        <View className="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl">
-          <Text className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-3 text-center">
-            🔐 Developer Testing Simulator Console
+        {/* Dynamic bypass dashboard triggers */}
+        <View className={`p-5 rounded-3xl border mb-6 ${colors.card} space-y-3`}>
+          <Text className="text-emerald-500 font-bold text-xs uppercase tracking-wider text-center">⚡ Tester Review Simulator</Text>
+          <Text className="text-slate-500 text-[10px] text-center leading-4">
+            Simulate an admin action to instantly approve or reject this user account so you can preview the fully active role dashboard:
           </Text>
-          <Text className="text-slate-500 text-xs text-center mb-4">
-            Simulate administrative decisions on your KYC registration payload:
-          </Text>
-          <View className="flex-row gap-3">
+          
+          <View className="flex-row gap-3 pt-2">
             <TouchableOpacity 
               onPress={() => handleAdminSimulateDecision('APPROVE')}
-              className="bg-emerald-600 py-3 rounded-xl flex-1 active:bg-emerald-700 border border-emerald-500 shadow-md"
+              className="bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl flex-1 items-center"
             >
-              <Text className="text-white text-center font-bold text-sm">🟢 Approve KYC</Text>
+              <Text className="text-white font-bold text-xs">Instantly Approve</Text>
             </TouchableOpacity>
-
             <TouchableOpacity 
-              onPress={() => handleAdminSimulateDecision('REJECT', 'Scanned ID card is too blurry.')}
-              className="bg-red-600 py-3 rounded-xl flex-1 active:bg-red-700 border border-red-500 shadow-md"
+              onPress={() => handleAdminSimulateDecision('REJECT', 'Submitted document scans are blurry')}
+              className="bg-red-500/15 border border-red-500/30 py-2.5 rounded-xl flex-1 items-center"
             >
-              <Text className="text-white text-center font-bold text-sm">🔴 Reject KYC</Text>
+              <Text className="text-red-500 font-bold text-xs">Simulate Reject</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        <TouchableOpacity 
+          onPress={handleLogout} 
+          className="border border-slate-350 dark:border-slate-700 py-3.5 rounded-xl items-center"
+        >
+          <Text className={`${colors.textSecondary} font-bold text-xs`}>Logout & Check Later</Text>
+        </TouchableOpacity>
       </View>
     );
   }
