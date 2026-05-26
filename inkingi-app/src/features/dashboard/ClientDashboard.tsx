@@ -27,6 +27,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockProject } from '../../data/mockAdminService';
+import TabButton from '../../components/ui/TabButton';
+import LottieAnimation from '../../components/ui/LottieAnimation';
 
 export default function ClientDashboard() {
   const { 
@@ -53,13 +55,13 @@ export default function ClientDashboard() {
   const colors = {
     bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
     card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200/80 shadow-sm',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    textSecondary: isDark ? 'text-slate-300' : 'text-slate-800',
-    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    text: isDark ? 'text-white font-openSans' : 'text-slate-900 font-openSans',
+    textSecondary: isDark ? 'text-slate-300 font-openSans' : 'text-slate-800 font-openSans',
+    textMuted: isDark ? 'text-slate-400 font-openSans' : 'text-slate-500 font-openSans',
     border: isDark ? 'border-slate-800' : 'border-slate-250',
     inputBg: isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200',
     tabBar: isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200',
-    activeTab: 'text-emerald-500',
+    activeTab: 'text-primary-500',
     inactiveTab: isDark ? 'text-slate-500' : 'text-slate-400',
   };
 
@@ -231,16 +233,21 @@ export default function ClientDashboard() {
         {currentTab === 'dashboard' && (
           <View className="space-y-5">
             {/* Balance Card */}
-            <View className="bg-emerald-600 rounded-3xl p-5 shadow-lg relative overflow-hidden">
-              <Text className="text-emerald-100 text-xs font-bold tracking-wider uppercase mb-1">Escrow Vault Balance</Text>
-              <Text className="text-white text-3xl font-extrabold mb-4">
-                {escrowBalance.toLocaleString()} <Text className="text-emerald-200 text-lg">RWF</Text>
-              </Text>
+            <View className="bg-primary-500 rounded-3xl p-5 shadow-lg relative overflow-hidden">
+              <View className="flex-row justify-between items-center mb-1">
+                <View className="flex-1 pr-2">
+                  <Text className="text-primary-100 text-xs font-openSans font-bold tracking-wider uppercase mb-1">Escrow Vault Balance</Text>
+                  <Text className="text-white text-3xl font-robotoMono font-extrabold">
+                    {escrowBalance.toLocaleString()} <Text className="text-primary-200 text-lg">RWF</Text>
+                  </Text>
+                </View>
+                <LottieAnimation type="secure" size={60} />
+              </View>
               <TouchableOpacity 
                 onPress={() => setShowDepositModal(true)}
-                className="bg-white/20 active:bg-white/30 py-3 rounded-xl items-center border border-white/20 shadow-sm"
+                className="bg-white/20 active:bg-white/30 py-3 rounded-xl items-center border border-white/20 shadow-sm mt-3"
               >
-                <Text className="text-white font-bold text-sm">💰 Quick Deposit</Text>
+                <Text className="text-white font-openSans font-bold text-sm">💰 Quick Escrow Deposit</Text>
               </TouchableOpacity>
             </View>
 
@@ -254,18 +261,18 @@ export default function ClientDashboard() {
                 className={`p-5 rounded-3xl border ${colors.card}`}
               >
                 <View className="flex-row justify-between items-start mb-3">
-                  <View>
+                  <View className="flex-1 pr-2">
                     <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Primary Investment Project</Text>
                     <Text className={`${colors.text} text-lg font-bold mt-1`}>{selectedProject.name}</Text>
                     <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {selectedProject.location}</Text>
                   </View>
-                  <View className="bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded">
-                    <Text className="text-emerald-500 text-xs font-bold">{selectedProject.progress}% Done</Text>
+                  <View className="bg-primary-500/10 border border-primary-500/20 px-2.5 py-0.5 rounded">
+                    <Text className="text-primary-500 text-xs font-bold">{selectedProject.progress}% Done</Text>
                   </View>
                 </View>
                 
                 <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-4">
-                  <View className="h-full bg-emerald-500" style={{ width: `${selectedProject.progress}%` }} />
+                  <View className="h-full bg-primary-500" style={{ width: `${selectedProject.progress}%` }} />
                 </View>
 
                 {/* Info desk */}
@@ -277,7 +284,7 @@ export default function ClientDashboard() {
                       <Text className={`${colors.text} text-xs font-bold`}>{selectedProject.engineer}</Text>
                     </View>
                   </View>
-                  <Text className="text-emerald-500 text-xs font-extrabold">Tap to Manage ➔</Text>
+                  <Text className="text-primary-500 text-xs font-extrabold">Tap to Manage ➔</Text>
                 </View>
               </TouchableOpacity>
             ) : null}
@@ -307,18 +314,18 @@ export default function ClientDashboard() {
                         <Text className={`${colors.text} font-bold text-base`}>{proj.name}</Text>
                         <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {proj.location}</Text>
                       </View>
-                      <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        <Text className="text-emerald-500 text-xs font-bold">{proj.progress}%</Text>
+                      <View className="bg-primary-500/10 px-2 py-0.5 rounded border border-primary-500/20">
+                        <Text className="text-primary-500 text-xs font-bold">{proj.progress}%</Text>
                       </View>
                     </View>
                     
                     <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <View className="h-full bg-emerald-500" style={{ width: `${proj.progress}%` }} />
+                      <View className="h-full bg-primary-500" style={{ width: `${proj.progress}%` }} />
                     </View>
 
                     <View className="flex-row justify-between items-center text-xs pt-1">
                       <Text className={colors.textMuted}>Budget: {proj.budget.toLocaleString()} RWF</Text>
-                      <Text className="text-emerald-500 font-bold text-xs">View Details ➔</Text>
+                      <Text className="text-primary-500 font-bold text-xs">View Details ➔</Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -332,17 +339,20 @@ export default function ClientDashboard() {
                   onPress={() => setProjectsView('list')}
                   className="flex-row items-center py-2"
                 >
-                  <Text className="text-emerald-500 text-lg font-bold">←</Text>
-                  <Text className="text-emerald-500 text-sm font-bold ml-2">Back to Project Directory</Text>
+                  <Text className="text-primary-500 text-lg font-bold">←</Text>
+                  <Text className="text-primary-500 text-sm font-bold ml-2">Back to Project Directory</Text>
                 </TouchableOpacity>
 
                 {/* Project Header Widget */}
-                <View className={`p-5 rounded-3xl border ${colors.card} space-y-2`}>
-                  <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Currently Managing</Text>
-                  <Text className={`${colors.text} text-xl font-extrabold`}>{selectedProject?.name}</Text>
-                  <Text className={`${colors.textSecondary} text-xs font-medium`}>📍 Location: {selectedProject?.location}</Text>
-                  <Text className={`${colors.textSecondary} text-xs font-medium`}>👷‍♂️ Contractor: {selectedProject?.engineer}</Text>
-                  <Text className={`${colors.textSecondary} text-xs font-medium`}>💰 Total Budget: {selectedProject?.budget.toLocaleString()} RWF</Text>
+                <View className={`p-5 rounded-3xl border ${colors.card} flex-row justify-between items-center`}>
+                  <View className="flex-1 pr-2 space-y-1">
+                    <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Currently Managing</Text>
+                    <Text className={`${colors.text} text-xl font-extrabold`}>{selectedProject?.name}</Text>
+                    <Text className={`${colors.textSecondary} text-xs font-medium`}>📍 Location: {selectedProject?.location}</Text>
+                    <Text className={`${colors.textSecondary} text-xs font-medium`}>👷‍♂️ Contractor: {selectedProject?.engineer}</Text>
+                    <Text className={`${colors.textSecondary} text-xs font-medium`}>💰 Total Budget: {selectedProject?.budget.toLocaleString()} RWF</Text>
+                  </View>
+                  <LottieAnimation type="construction" size={75} />
                 </View>
 
                 {/* Widget 1: Horizontally Scrollable Construction Progress Photos */}
@@ -419,17 +429,18 @@ export default function ClientDashboard() {
         {/* ================= TAB: ESCROW VAULT ================= */}
         {currentTab === 'escrow' && (
           <View className="space-y-4">
-            <View className={`p-5 rounded-3xl border ${colors.card}`}>
-              <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Partnership Escrow Vault</Text>
-              <Text className={`${colors.text} text-3xl font-extrabold mt-1 mb-4`}>
-                {escrowBalance.toLocaleString()} <Text className="text-emerald-500 text-xl font-bold">RWF</Text>
+            <View className={`p-5 rounded-3xl border ${colors.card} items-center`}>
+              <LottieAnimation type="secure" size={100} />
+              <Text className={`${colors.textMuted} text-xs font-bold uppercase mt-2`}>Partnership Escrow Vault</Text>
+              <Text className={`${colors.text} text-3xl font-robotoMono font-extrabold mt-1 mb-4`}>
+                {escrowBalance.toLocaleString()} <Text className="text-primary-500 text-xl font-bold">RWF</Text>
               </Text>
               
               <TouchableOpacity 
                 onPress={() => setShowDepositModal(true)}
-                className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center border border-emerald-500"
+                className="bg-primary-500 active:bg-primary-650 py-3.5 w-full rounded-xl items-center border border-primary-600"
               >
-                <Text className="text-white font-bold text-sm">💰 Deposit Escrow Wallet</Text>
+                <Text className="text-white font-openSans font-bold text-sm">💰 Deposit Escrow Wallet</Text>
               </TouchableOpacity>
             </View>
 
@@ -575,41 +586,47 @@ export default function ClientDashboard() {
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
-        <TouchableOpacity 
+      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+        <TabButton
+          label="Dash"
+          iconName="home-outline"
+          activeIconName="home"
+          isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'dashboard' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Dash</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Builds"
+          iconName="construct-outline"
+          activeIconName="construct"
+          isActive={currentTab === 'projects'}
           onPress={() => setCurrentTab('projects')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'projects' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Builds</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Vault"
+          iconName="wallet-outline"
+          activeIconName="wallet"
+          isActive={currentTab === 'escrow'}
           onPress={() => setCurrentTab('escrow')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'escrow' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Vault</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Chat"
+          iconName="chatbubbles-outline"
+          activeIconName="chatbubbles"
+          isActive={currentTab === 'messages'}
           onPress={() => setCurrentTab('messages')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'messages' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Chat</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="User"
+          iconName="person-outline"
+          activeIconName="person"
+          isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'profile' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>User</Text>
-        </TouchableOpacity>
+          isDark={isDark}
+        />
       </View>
 
       {/* Widget 3: Low-Level Drill-Down Milestone Inspection Details Modal */}
@@ -684,46 +701,56 @@ export default function ClientDashboard() {
               </TouchableOpacity>
             </View>
 
-            <Text className={`${colors.textMuted} text-xs mb-4`}>
-              Provide payment details to request direct escrow funding verification callback.
-            </Text>
-
-            <View className="space-y-3 mb-5">
-              <View>
-                <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>MTN Phone Number</Text>
-                <TextInput
-                  className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
-                  placeholder="+250788100000"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  value={momoNumber}
-                  onChangeText={setMomoNumber}
-                />
+            {isProcessingPayment ? (
+              <View className="items-center justify-center py-10 space-y-4">
+                <LottieAnimation type="loading" size={90} />
+                <Text className={`${colors.text} text-sm font-semibold text-center mt-2`}>
+                  Connecting to MTN Mobile Money...
+                </Text>
+                <Text className={`${colors.textMuted} text-xs text-center`}>
+                  Please approve the USSD prompt on device: {momoNumber}
+                </Text>
               </View>
+            ) : (
+              <>
+                <Text className={`${colors.textMuted} text-xs mb-4`}>
+                  Provide payment details to request direct escrow funding verification callback.
+                </Text>
 
-              <View>
-                <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>Deposit Amount (RWF)</Text>
-                <TextInput
-                  className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
-                  placeholder="5,000,000"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="numeric"
-                  value={depositAmount}
-                  onChangeText={setDepositAmount}
-                />
-              </View>
-            </View>
+                <View className="space-y-3 mb-5">
+                  <View>
+                    <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>MTN Phone Number</Text>
+                    <TextInput
+                      className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
+                      placeholder="+250788100000"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="phone-pad"
+                      value={momoNumber}
+                      onChangeText={setMomoNumber}
+                    />
+                  </View>
 
-            <TouchableOpacity 
-              onPress={handleDepositFunds}
-              disabled={isProcessingPayment}
-              className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl items-center flex-row justify-center shadow-lg border border-emerald-500"
-            >
-              {isProcessingPayment ? (
-                <ActivityIndicator color="#white" size="small" className="mr-2" />
-              ) : null}
-              <Text className="text-white font-bold text-sm">Confirm & Authorize MoMo</Text>
-            </TouchableOpacity>
+                  <View>
+                    <Text className={`${colors.textMuted} text-[10px] font-bold mb-1.5 ml-1`}>Deposit Amount (RWF)</Text>
+                    <TextInput
+                      className={`rounded-xl px-4 py-3 text-sm ${colors.inputBg} ${colors.text}`}
+                      placeholder="5,000,000"
+                      placeholderTextColor="#94a3b8"
+                      keyboardType="numeric"
+                      value={depositAmount}
+                      onChangeText={setDepositAmount}
+                    />
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  onPress={handleDepositFunds}
+                  className="bg-primary-500 active:bg-primary-600 py-3.5 rounded-xl items-center flex-row justify-center shadow-lg border border-primary-600"
+                >
+                  <Text className="text-white font-openSans font-bold text-sm">Confirm & Authorize MoMo</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
       </Modal>

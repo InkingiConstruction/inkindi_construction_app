@@ -24,6 +24,8 @@ import {
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import TabButton from '../../components/ui/TabButton';
+import LottieAnimation from '../../components/ui/LottieAnimation';
 
 export default function SupervisorDashboard() {
   const { 
@@ -44,13 +46,13 @@ export default function SupervisorDashboard() {
   const colors = {
     bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
     card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200/80 shadow-sm',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    textSecondary: isDark ? 'text-slate-350' : 'text-slate-850',
-    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    text: isDark ? 'text-white font-openSans' : 'text-slate-900 font-openSans',
+    textSecondary: isDark ? 'text-slate-350 font-openSans' : 'text-slate-850 font-openSans',
+    textMuted: isDark ? 'text-slate-400 font-openSans' : 'text-slate-500 font-openSans',
     border: isDark ? 'border-slate-800' : 'border-slate-200',
     inputBg: isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200',
     tabBar: isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200',
-    activeTab: 'text-emerald-500',
+    activeTab: 'text-primary-500',
   };
 
   // Simulated inspection details
@@ -165,23 +167,24 @@ export default function SupervisorDashboard() {
                 <Text className={`${colors.textMuted} text-[10px]`}>Site GPS match coordinates are required to unlock audit certificate form.</Text>
               </View>
 
-              {gpsCheckedIn ? (
+              {isCheckingGps ? (
+                <View className="items-center justify-center py-4 space-y-2">
+                  <LottieAnimation type="loading" size={60} />
+                  <Text className={`${colors.text} text-xs font-bold`}>Verifying device coordinates...</Text>
+                </View>
+              ) : gpsCheckedIn ? (
                 <TouchableOpacity 
                   onPress={() => setCurrentTab('inspections')}
-                  className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl border border-emerald-500 items-center"
+                  className="bg-emerald-500 active:bg-emerald-600 py-3.5 rounded-xl border border-emerald-600 items-center"
                 >
                   <Text className="text-white font-bold text-sm">✓ Open Quality Checklist</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity 
                   onPress={handleGPSCheckIn}
-                  disabled={isCheckingGps}
-                  className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl border border-emerald-500 items-center flex-row justify-center"
+                  className="bg-primary-500 active:bg-primary-600 py-3.5 rounded-xl border border-primary-600 items-center"
                 >
-                  {isCheckingGps ? (
-                    <ActivityIndicator color="#white" size="small" className="mr-2" />
-                  ) : null}
-                  <Text className="text-white font-bold text-sm">📍 Verify GPS Site Boundary Check-in</Text>
+                  <Text className="text-white font-bold text-sm font-openSans">📍 Verify GPS Site Boundary Check-in</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -377,34 +380,39 @@ export default function SupervisorDashboard() {
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
-        <TouchableOpacity 
+      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+        <TabButton
+          label="Dash"
+          iconName="home-outline"
+          activeIconName="home"
+          isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'dashboard' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Dash</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Inspect"
+          iconName="checkmark-circle-outline"
+          activeIconName="checkmark-circle"
+          isActive={currentTab === 'inspections'}
           onPress={() => setCurrentTab('inspections')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'inspections' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Inspect</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Sites"
+          iconName="map-outline"
+          activeIconName="map"
+          isActive={currentTab === 'projects'}
           onPress={() => setCurrentTab('projects')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'projects' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Sites</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="User"
+          iconName="person-outline"
+          activeIconName="person"
+          isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'profile' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>User</Text>
-        </TouchableOpacity>
+          isDark={isDark}
+        />
       </View>
     </View>
   );

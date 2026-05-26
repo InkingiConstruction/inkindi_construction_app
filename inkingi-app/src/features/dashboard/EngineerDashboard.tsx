@@ -24,6 +24,8 @@ import {
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import TabButton from '../../components/ui/TabButton';
+import LottieAnimation from '../../components/ui/LottieAnimation';
 
 export default function EngineerDashboard() {
   const { 
@@ -44,13 +46,13 @@ export default function EngineerDashboard() {
   const colors = {
     bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
     card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200/80 shadow-sm',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    textSecondary: isDark ? 'text-slate-350' : 'text-slate-850',
-    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    text: isDark ? 'text-white font-openSans' : 'text-slate-900 font-openSans',
+    textSecondary: isDark ? 'text-slate-355' : 'text-slate-855',
+    textMuted: isDark ? 'text-slate-400 font-openSans' : 'text-slate-500 font-openSans',
     border: isDark ? 'border-slate-800' : 'border-slate-200',
     inputBg: isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200',
     tabBar: isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200',
-    activeTab: 'text-emerald-500',
+    activeTab: 'text-primary-500',
   };
 
   // Assigned project list
@@ -165,34 +167,33 @@ export default function EngineerDashboard() {
                 <Text className={`${colors.text} text-xl font-black mt-1`}>1 Pending</Text>
               </View>
             </View>
-
+            
             {/* Today's Focus Build Card */}
             {selectedProject ? (
-              <View className={`p-5 rounded-3xl border ${colors.card}`}>
-                <View className="flex-row justify-between items-start mb-2">
-                  <View>
-                    <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Project Focused</Text>
-                    <Text className={`${colors.text} text-base font-bold mt-0.5`}>{selectedProject.name}</Text>
-                    <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {selectedProject.location}</Text>
+              <View className={`p-5 rounded-3xl border ${colors.card} flex-row justify-between items-center`}>
+                <View className="flex-1 pr-2 space-y-1">
+                  <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Project Focused</Text>
+                  <Text className={`${colors.text} text-base font-bold mt-0.5`}>{selectedProject.name}</Text>
+                  <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {selectedProject.location}</Text>
+                  
+                  <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden my-2">
+                    <View className="h-full bg-primary-500" style={{ width: `${selectedProject.progress}%` }} />
                   </View>
-                  <View className="bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-                    <Text className="text-emerald-500 text-xs font-bold">{selectedProject.progress}%</Text>
-                  </View>
-                </View>
-                
-                <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
-                  <View className="h-full bg-emerald-500" style={{ width: `${selectedProject.progress}%` }} />
-                </View>
-
-                <View className="bg-slate-100 dark:bg-slate-900/60 p-3 rounded-xl flex-row justify-between items-center mt-2">
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-sm">🤵</Text>
-                    <View>
-                      <Text className={`${colors.textMuted} text-[9px] font-bold uppercase`}>Client / Investor</Text>
-                      <Text className={`${colors.text} text-xs font-bold`}>{selectedProject.client}</Text>
+ 
+                  <View className="flex-row justify-between items-center bg-slate-100 dark:bg-slate-900/60 p-2.5 rounded-xl mt-1">
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-xs">🤵</Text>
+                      <View>
+                        <Text className={`${colors.textMuted} text-[8px] font-bold uppercase`}>Client / Investor</Text>
+                        <Text className={`${colors.text} text-[11px] font-bold`}>{selectedProject.client}</Text>
+                      </View>
+                    </View>
+                    <View className="bg-primary-500/10 px-2 py-0.5 rounded border border-primary-500/20">
+                      <Text className="text-primary-500 text-[10px] font-bold">{selectedProject.progress}% Done</Text>
                     </View>
                   </View>
                 </View>
+                <LottieAnimation type="construction" size={80} />
               </View>
             ) : null}
           </View>
@@ -227,7 +228,7 @@ export default function EngineerDashboard() {
                   </View>
                 </View>
 
-                {m.status === 'UNSTARTED' && (
+                {m.status === 'PENDING' && (
                   <View className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-2">
                     <TouchableOpacity 
                       onPress={() => handleRequestMilestoneInspection(idx, m.name)}
@@ -384,41 +385,47 @@ export default function EngineerDashboard() {
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
-        <TouchableOpacity 
+      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+        <TabButton
+          label="Dash"
+          iconName="home-outline"
+          activeIconName="home"
+          isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'dashboard' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Dash</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Builds"
+          iconName="construct-outline"
+          activeIconName="construct"
+          isActive={currentTab === 'projects'}
           onPress={() => setCurrentTab('projects')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'projects' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Builds</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="BoQ"
+          iconName="document-text-outline"
+          activeIconName="document-text"
+          isActive={currentTab === 'boq'}
           onPress={() => setCurrentTab('boq')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'boq' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>BoQ</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Chat"
+          iconName="chatbubbles-outline"
+          activeIconName="chatbubbles"
+          isActive={currentTab === 'messages'}
           onPress={() => setCurrentTab('messages')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'messages' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Chat</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="User"
+          iconName="person-outline"
+          activeIconName="person"
+          isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'profile' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>User</Text>
-        </TouchableOpacity>
+          isDark={isDark}
+        />
       </View>
     </View>
   );

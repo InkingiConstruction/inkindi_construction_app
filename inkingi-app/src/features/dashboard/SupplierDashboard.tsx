@@ -24,6 +24,8 @@ import {
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import TabButton from '../../components/ui/TabButton';
+import LottieAnimation from '../../components/ui/LottieAnimation';
 
 export default function SupplierDashboard() {
   const { 
@@ -44,13 +46,13 @@ export default function SupplierDashboard() {
   const colors = {
     bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
     card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200/80 shadow-sm',
-    text: isDark ? 'text-white' : 'text-slate-900',
-    textSecondary: isDark ? 'text-slate-350' : 'text-slate-850',
-    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    text: isDark ? 'text-white font-openSans' : 'text-slate-900 font-openSans',
+    textSecondary: isDark ? 'text-slate-350 font-openSans' : 'text-slate-855 font-openSans',
+    textMuted: isDark ? 'text-slate-400 font-openSans' : 'text-slate-500 font-openSans',
     border: isDark ? 'border-slate-800' : 'border-slate-200',
     inputBg: isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200',
     tabBar: isDark ? 'bg-slate-900/95 border-slate-800' : 'bg-white/95 border-slate-200',
-    activeTab: 'text-emerald-500',
+    activeTab: 'text-primary-500',
   };
 
   // RFQ and Deliveries states
@@ -265,20 +267,21 @@ export default function SupplierDashboard() {
                 )}
               </View>
 
-              {deliveryConfirmed ? (
+              {isReportingDelivery ? (
+                <View className="items-center justify-center py-4 space-y-2">
+                  <LottieAnimation type="loading" size={60} />
+                  <Text className={`${colors.text} text-xs font-bold`}>Verifying delivery GPS boundary coordinates...</Text>
+                </View>
+              ) : deliveryConfirmed ? (
                 <View className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3.5 items-center">
                   <Text className="text-emerald-500 text-xs font-semibold">✓ Delivered Successfully.</Text>
                 </View>
               ) : (
                 <TouchableOpacity 
                   onPress={handleMarkDelivered}
-                  disabled={isReportingDelivery}
-                  className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl border border-emerald-500 items-center flex-row justify-center"
+                  className="bg-primary-500 active:bg-primary-600 py-3.5 rounded-xl border border-primary-600 items-center"
                 >
-                  {isReportingDelivery ? (
-                    <ActivityIndicator color="#white" size="small" className="mr-2" />
-                  ) : null}
-                  <Text className="text-white font-bold text-sm">📍 Confirm Delivery (GPS Boundary Check)</Text>
+                  <Text className="text-white font-bold text-sm font-openSans">📍 Confirm Delivery (GPS Boundary Check)</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -360,34 +363,39 @@ export default function SupplierDashboard() {
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
-        <TouchableOpacity 
+      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+        <TabButton
+          label="Dash"
+          iconName="home-outline"
+          activeIconName="home"
+          isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'dashboard' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Dash</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="RFQs"
+          iconName="list-outline"
+          activeIconName="list"
+          isActive={currentTab === 'rfqs'}
           onPress={() => setCurrentTab('rfqs')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'rfqs' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>RFQs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="Orders"
+          iconName="cube-outline"
+          activeIconName="cube"
+          isActive={currentTab === 'deliveries'}
           onPress={() => setCurrentTab('deliveries')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'deliveries' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>Orders</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
+          isDark={isDark}
+        />
+        <TabButton
+          label="User"
+          iconName="person-outline"
+          activeIconName="person"
+          isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
-          className="items-center justify-center w-14 h-12"
-        >
-          <Text className={currentTab === 'profile' ? 'text-emerald-500 text-xs font-extrabold' : `${isDark ? 'text-slate-500' : 'text-slate-400'} text-xs font-medium`}>User</Text>
-        </TouchableOpacity>
+          isDark={isDark}
+        />
       </View>
     </View>
   );

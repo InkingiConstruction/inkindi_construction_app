@@ -269,15 +269,23 @@ const handleLogout = async () => {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setLoading(false);
-      const reg = simulateExternalRegistryCheck(licenseId);
-      if (reg) {
-        setIsLicenseValid(true);
-        Alert.alert('Registry Match Found!', `Verified: ${useAuth.name}\nStatus: Active license\nRegistration: ${reg.registrationDate}`);
-      } else {
+      try {
+        const isValid = await simulateExternalRegistryCheck(licenseId);
+        if (isValid) {
+          setIsLicenseValid(true);
+          Alert.alert(
+            'Registry Match Found!',
+            `Verified License ID: ${licenseId}\nStatus: Active Licensed Professional\nVerification Authority: Institution of Engineers Rwanda (IER)`
+          );
+        } else {
+          setIsLicenseValid(false);
+          Alert.alert('No Match', 'License ID not found in Rwanda IER external database API. Hint: Use IER-2026- prefix.');
+        }
+      } catch (err) {
         setIsLicenseValid(false);
-        Alert.alert('No Match', 'License ID not found in Rwanda IER external database API.');
+        Alert.alert('Validation Error', 'Failed to communicate with external IER API.');
       }
     }, 1500);
   };
