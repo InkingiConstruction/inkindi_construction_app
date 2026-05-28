@@ -12,6 +12,7 @@
     "@gorhom/bottom-sheet": "^5.2.14",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "^9.1.0",
     "@react-native-picker/picker": "^2.11.4",
     "babel-preset-expo": "^56.0.12",
     "class-variance-authority": "^0.7.1",

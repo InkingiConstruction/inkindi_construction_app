@@ -23,13 +23,17 @@ import {
   Modal, 
   ActivityIndicator, 
   Image,
-  Switch 
+  Switch,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockProject } from '../../data/mockAdminService';
 import TabButton from '../../components/ui/TabButton';
 import LottieAnimation from '../../components/ui/LottieAnimation';
+import { EvilIcons, MaterialIcons } from '@expo/vector-icons';
 
 type AddedProject = {
   id: string;
@@ -53,6 +57,11 @@ type DashboardProject = MockProject & {
 };
 
 export default function ClientDashboard() {
+  const screenHeight = Dimensions.get('window').height;
+  const centeredModalMaxHeight = Math.floor(screenHeight * 0.9);
+  const bottomSheetModalMaxHeight = Math.floor(screenHeight * 0.85);
+  const addProjectFormMaxHeight = Math.floor(screenHeight * 0.6);
+
   const { 
     user, 
     projects, 
@@ -106,6 +115,8 @@ export default function ClientDashboard() {
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [projectPlanFileName, setProjectPlanFileName] = useState('');
   const [projectPlanFileUri, setProjectPlanFileUri] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [activeDateField, setActiveDateField] = useState<'start' | 'due'>('start');
 
   // Active project list
   const clientProjects: DashboardProject[] = projects.filter(
@@ -270,6 +281,40 @@ export default function ClientDashboard() {
     }
   };
 
+  const formatDateValue = (date: Date) => date.toISOString().split('T')[0];
+
+  const openDatePicker = (field: 'start' | 'due') => {
+    setActiveDateField(field);
+    setShowDatePicker(true);
+  };
+
+  const getPickerDate = () => {
+    const sourceDate =
+      activeDateField === 'start' ? newProjectStartDate : newProjectDueDate;
+    const parsed = sourceDate ? new Date(sourceDate) : new Date();
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  };
+
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date
+  ) => {
+    if (event.type === 'dismissed' || !selectedDate) {
+      setShowDatePicker(false);
+      return;
+    }
+
+    const formatted = formatDateValue(selectedDate);
+    if (activeDateField === 'start') {
+      setNewProjectStartDate(formatted);
+    } else {
+      setNewProjectDueDate(formatted);
+    }
+
+    // Close picker immediately after selection for all platforms.
+    setShowDatePicker(false);
+  };
+
   const resetAddProjectForm = () => {
     setNewProjectName('');
     setNewProjectLocation('');
@@ -348,15 +393,15 @@ export default function ClientDashboard() {
         {currentTab === 'dashboard' && (
           <View className="space-y-5">
             {/* Search bar */}
-            <View className={`flex-row items-center border rounded-xl px-4 py-2.5 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-              <Text className="text-slate-400 text-base mr-2">🔎</Text>
+            <View className={`flex-row items-center border rounded-xl mb-3 px-4 py-2 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+              
               <TextInput
-                placeholder="Enter the name"
+                placeholder="Enter project name or location"
                 placeholderTextColor="#94a3b8"
                 className={`flex-1 text-sm ${colors.text}`}
               />
               <TouchableOpacity className="ml-2">
-                <Text className="text-slate-500 text-lg">⚙️</Text>
+              <EvilIcons name="search" size={24} color="black" />
               </TouchableOpacity>
             </View>
 
@@ -376,7 +421,7 @@ export default function ClientDashboard() {
               </View>
             </View>
 
-            <View className="flex-row gap-4">
+            <View className="flex-row gap-4 mt-2">
               <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
                 <Text className={`${colors.textMuted} text-[11px] font-bold`}>Pending Milestones</Text>
                 <Text className={`${colors.text} text-2xl font-extrabold mt-2`}>
@@ -792,19 +837,27 @@ export default function ClientDashboard() {
         onRequestClose={() => setShowAddProjectModal(false)}
       >
         <View className="flex-1 bg-black/35 justify-center px-4">
-          <View className={`rounded-3xl p-5 border ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <View
+            style={{ maxHeight: centeredModalMaxHeight }}
+            className={`rounded-3xl p-5 border overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}
+          >
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-[#007E6E] text-4xl font-extrabold tracking-wide">ADD PROJECT FORM</Text>
+              <Text className="text-[#007E6E] text-xl font-bold tracking-wide">Create new project</Text>
               <TouchableOpacity onPress={() => setShowAddProjectModal(false)}>
-                <Text className={`${colors.text} text-4xl`}>✕</Text>
+                <Text className={`${colors.text} text-xl`}>✕</Text>
               </TouchableOpacity>
             </View>
             <View className="h-[1px] bg-[#007E6E] mb-4" />
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+            <ScrollView
+              style={{ maxHeight: addProjectFormMaxHeight }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 12 }}
+              keyboardShouldPersistTaps="handled"
+            >
               <Text className={`${colors.textSecondary} text-lg mb-2`}>Project Name</Text>
-              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
-                <Text className="text-slate-400 text-xl mr-3">📦</Text>
+              <View className={`border rounded-xl px-4 py-0.5 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <MaterialIcons name="folder" size={24} color="#94a3b8" />
                 <TextInput
                   value={newProjectName}
                   onChangeText={setNewProjectName}
@@ -815,8 +868,8 @@ export default function ClientDashboard() {
               </View>
 
               <Text className={`${colors.textSecondary} text-lg mb-2`}>Location</Text>
-              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
-                <Text className="text-slate-400 text-xl mr-3">📍</Text>
+              <View className={`border rounded-xl px-4 py-0.5 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <MaterialIcons name="location-on" size={24} color="#94a3b8" />
                 <TextInput
                   value={newProjectLocation}
                   onChangeText={setNewProjectLocation}
@@ -827,48 +880,33 @@ export default function ClientDashboard() {
               </View>
 
               <Text className={`${colors.textSecondary} text-lg mb-2`}>Start Date</Text>
-              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
-                <TextInput
-                  value={newProjectStartDate}
-                  onChangeText={setNewProjectStartDate}
-                  placeholder="Starting Date"
-                  placeholderTextColor="#9ca3af"
-                  className={`flex-1 text-lg text-center ${colors.text}`}
-                />
-                <Text className="text-slate-400 text-2xl ml-3">📅</Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => openDatePicker('start')}
+                className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}
+              >
+                <Text className={`flex-1 text-lg text-center ${newProjectStartDate ? colors.text : 'text-slate-400'}`}>
+                  {newProjectStartDate || 'Starting Date'}
+                </Text>
+                <MaterialIcons name="date-range" size={24} color="#94a3b8" />
+              </TouchableOpacity>
 
               <Text className={`${colors.textSecondary} text-lg mb-2`}>Due Date</Text>
-              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
-                <TextInput
-                  value={newProjectDueDate}
-                  onChangeText={setNewProjectDueDate}
-                  placeholder="Project Deadline"
-                  placeholderTextColor="#9ca3af"
-                  className={`flex-1 text-lg text-center ${colors.text}`}
-                />
-                <Text className="text-slate-400 text-2xl ml-3">📅</Text>
-              </View>
-
-              <Text className={`${colors.textSecondary} text-lg mb-2`}>Lead Engineer</Text>
-              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
-                <Text className="text-slate-400 text-xl mr-3">👤</Text>
-                <TextInput
-                  value={newProjectLeadEngineer}
-                  onChangeText={setNewProjectLeadEngineer}
-                  placeholder="Select Engineer"
-                  placeholderTextColor="#9ca3af"
-                  className={`flex-1 text-lg ${colors.text}`}
-                />
-                <Text className="text-slate-500 text-xl ml-2">⌄</Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => openDatePicker('due')}
+                className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}
+              >
+                <Text className={`flex-1 text-lg text-center ${newProjectDueDate ? colors.text : 'text-slate-400'}`}>
+                  {newProjectDueDate || 'Project Deadline'}
+                </Text>
+                <MaterialIcons name="date-range" size={24} color="#94a3b8" />
+              </TouchableOpacity>
 
               <Text className={`${colors.textSecondary} text-lg mb-2`}>Project Plan File</Text>
               <TouchableOpacity
                 onPress={handlePickProjectPlan}
-                className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}
+                className={`border rounded-xl px-4 py-4 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}
               >
-                <Text className="text-slate-400 text-xl mr-3">📎</Text>
+                <MaterialIcons name="attach-file" size={24} color="#94a3b8" />
                 <Text className={`${projectPlanFileName ? colors.text : 'text-slate-400'} text-base flex-1`}>
                   {projectPlanFileName || 'Upload project plan (any file type)'}
                 </Text>
@@ -887,14 +925,25 @@ export default function ClientDashboard() {
                   className={`min-h-28 text-lg ${colors.text}`}
                 />
               </View>
+            </ScrollView>
 
+            <View className={`pt-3 border-t ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
               <TouchableOpacity
                 onPress={handleAddProject}
-                className="bg-[#007E6E] py-4 rounded-2xl items-center mb-1"
+                className="bg-[#007E6E] py-4 rounded-2xl items-center"
               >
-                <Text className="text-white text-4xl font-extrabold tracking-wide">ADD PROJECT</Text>
+                <Text className="text-white text-xl font-bold tracking-wide">Add Project</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </View>
+
+            {showDatePicker ? (
+              <DateTimePicker
+                value={getPickerDate()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+              />
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -907,50 +956,57 @@ export default function ClientDashboard() {
         onRequestClose={() => setShowMilestoneModal(false)}
       >
         <View className="flex-1 bg-black/60 justify-end">
-          <View className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <View
+            style={{ maxHeight: bottomSheetModalMaxHeight }}
+            className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+          >
             <View className="flex-row justify-between items-center mb-4">
               <Text className={`${colors.text} text-base font-bold`}>Milestone Verification Audit</Text>
               <TouchableOpacity onPress={() => setShowMilestoneModal(false)}>
                 <Text className={`${colors.textMuted} text-lg font-bold`}>✕</Text>
               </TouchableOpacity>
             </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 12 }}
+            >
+              <View className="space-y-3 mb-5">
+                <View className="bg-slate-100 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <Text className={`${colors.textMuted} text-[10px] font-bold uppercase`}>Milestone Title</Text>
+                  <Text className={`${colors.text} text-sm font-bold mt-0.5`}>{selectedMilestone?.name}</Text>
+                  <Text className={`${colors.textMuted} text-xs mt-1`}>Status: <Text className="text-emerald-500 font-bold uppercase">{selectedMilestone?.status}</Text></Text>
+                </View>
 
-            <View className="space-y-3 mb-5">
-              <View className="bg-slate-100 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <Text className={`${colors.textMuted} text-[10px] font-bold uppercase`}>Milestone Title</Text>
-                <Text className={`${colors.text} text-sm font-bold mt-0.5`}>{selectedMilestone?.name}</Text>
-                <Text className={`${colors.textMuted} text-xs mt-1`}>Status: <Text className="text-emerald-500 font-bold uppercase">{selectedMilestone?.status}</Text></Text>
-              </View>
-
-              {/* Inspector Quality Checklist widget */}
-              <View className="space-y-2">
-                <Text className={`${colors.text} text-xs font-bold mb-1 ml-1`}>Inspector Checklist Certifications</Text>
-                <View className="space-y-1.5 pl-1.5">
-                  <Text className={`${colors.textSecondary} text-xs`}>✓ Concrete strength matches IER spec (Verified)</Text>
-                  <Text className={`${colors.textSecondary} text-xs`}>✓ Foundation depth meets required limits (Verified)</Text>
-                  <Text className={`${colors.textSecondary} text-xs`}>✓ Steel rebar alignment strictly checked (Verified)</Text>
-                  <Text className={`${colors.textSecondary} text-xs`}>✓ Digital signature certificate ledger ID: #SIG-89240 (Signed)</Text>
+                {/* Inspector Quality Checklist widget */}
+                <View className="space-y-2">
+                  <Text className={`${colors.text} text-xs font-bold mb-1 ml-1`}>Inspector Checklist Certifications</Text>
+                  <View className="space-y-1.5 pl-1.5">
+                    <Text className={`${colors.textSecondary} text-xs`}>✓ Concrete strength matches IER spec (Verified)</Text>
+                    <Text className={`${colors.textSecondary} text-xs`}>✓ Foundation depth meets required limits (Verified)</Text>
+                    <Text className={`${colors.textSecondary} text-xs`}>✓ Steel rebar alignment strictly checked (Verified)</Text>
+                    <Text className={`${colors.textSecondary} text-xs`}>✓ Digital signature certificate ledger ID: #SIG-89240 (Signed)</Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {selectedMilestone?.status === 'PENDING' && (
-              <View className="flex-row gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                <TouchableOpacity 
-                  onPress={() => handleReleaseMilestone(selectedMilestoneIndex, selectedMilestone?.name, selectedMilestone?.pct)}
-                  className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl flex-1 items-center justify-center shadow-lg border border-emerald-500"
-                >
-                  <Text className="text-white font-bold text-xs">Release Milestone Cash</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  onPress={() => handleInitiateDispute(selectedMilestoneIndex, selectedMilestone?.name)}
-                  className="bg-red-500/10 border border-red-500/25 py-3.5 rounded-xl flex-1 items-center justify-center"
-                >
-                  <Text className="text-red-500 font-bold text-xs">Raise Dispute</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              {selectedMilestone?.status === 'PENDING' && (
+                <View className="flex-row gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <TouchableOpacity 
+                    onPress={() => handleReleaseMilestone(selectedMilestoneIndex, selectedMilestone?.name, selectedMilestone?.pct)}
+                    className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl flex-1 items-center justify-center shadow-lg border border-emerald-500"
+                  >
+                    <Text className="text-white font-bold text-xs">Release Milestone Cash</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={() => handleInitiateDispute(selectedMilestoneIndex, selectedMilestone?.name)}
+                    className="bg-red-500/10 border border-red-500/25 py-3.5 rounded-xl flex-1 items-center justify-center"
+                  >
+                    <Text className="text-red-500 font-bold text-xs">Raise Dispute</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -963,7 +1019,10 @@ export default function ClientDashboard() {
         onRequestClose={() => setShowDepositModal(false)}
       >
         <View className="flex-1 bg-black/60 justify-end">
-          <View className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <View
+            style={{ maxHeight: bottomSheetModalMaxHeight }}
+            className={`border-t rounded-t-3xl p-6 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}
+          >
             <View className="flex-row justify-between items-center mb-4">
               <Text className={`${colors.text} text-lg font-bold`}>MTN Mobile Money Gateway</Text>
               <TouchableOpacity onPress={() => setShowDepositModal(false)}>
@@ -982,7 +1041,11 @@ export default function ClientDashboard() {
                 </Text>
               </View>
             ) : (
-              <>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 12 }}
+                keyboardShouldPersistTaps="handled"
+              >
                 <Text className={`${colors.textMuted} text-xs mb-4`}>
                   Provide payment details to request direct escrow funding verification callback.
                 </Text>
@@ -1019,7 +1082,7 @@ export default function ClientDashboard() {
                 >
                   <Text className="text-white font-openSans font-bold text-sm">Confirm & Authorize MoMo</Text>
                 </TouchableOpacity>
-              </>
+              </ScrollView>
             )}
           </View>
         </View>
