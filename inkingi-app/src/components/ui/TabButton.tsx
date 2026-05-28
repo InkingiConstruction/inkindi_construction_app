@@ -9,6 +9,8 @@ interface TabButtonProps {
   isActive: boolean;
   onPress: () => void;
   isDark: boolean;
+  variant?: 'default' | 'pill';
+  showLabel?: boolean;
 }
 
 export default function TabButton({
@@ -18,6 +20,8 @@ export default function TabButton({
   isActive,
   onPress,
   isDark,
+  variant = 'default',
+  showLabel = true,
 }: TabButtonProps) {
   const scaleValue = useRef(new Animated.Value(1)).current;
 
@@ -37,8 +41,14 @@ export default function TabButton({
     }).start();
   };
 
-  const activeColor = '#007E6E'; // Strict InkingiPro Corporate Teal
-  const inactiveColor = isDark ? '#64748b' : '#94a3b8'; // Slate-500 / Slate-400
+  const activeColor =
+    variant === 'pill' ? '#ffffff' : '#007E6E'; // teal on default, white on pill
+  const inactiveColor =
+    variant === 'pill'
+      ? 'rgba(255,255,255,0.7)'
+      : isDark
+        ? '#64748b'
+        : '#94a3b8'; // Slate-500 / Slate-400
 
   return (
     <TouchableOpacity
@@ -51,29 +61,31 @@ export default function TabButton({
       <Animated.View style={{ transform: [{ scale: scaleValue }], alignItems: 'center' }}>
         <Ionicons
           name={isActive ? activeIconName : iconName}
-          size={22}
+          size={24}
           color={isActive ? activeColor : inactiveColor}
         />
-        <Text
-          style={{
-            color: isActive ? activeColor : inactiveColor,
-            fontSize: 10,
-            fontWeight: isActive ? '700' : '500',
-            marginTop: 2,
-          }}
-          className="font-openSans"
-        >
-          {label}
-        </Text>
-        {isActive && (
-          <View 
-            style={{ 
-              width: 14, 
-              height: 2.5, 
-              backgroundColor: activeColor, 
-              borderRadius: 10, 
-              marginTop: 3 
-            }} 
+        {showLabel ? (
+          <Text
+            style={{
+              color: isActive ? activeColor : inactiveColor,
+              fontSize: 10,
+              fontWeight: isActive ? '700' : '500',
+              marginTop: 2,
+            }}
+            className="font-openSans"
+          >
+            {label}
+          </Text>
+        ) : null}
+        {variant === 'default' && isActive && (
+          <View
+            style={{
+              width: 14,
+              height: 2.5,
+              backgroundColor: activeColor,
+              borderRadius: 10,
+              marginTop: 3,
+            }}
           />
         )}
       </Animated.View>

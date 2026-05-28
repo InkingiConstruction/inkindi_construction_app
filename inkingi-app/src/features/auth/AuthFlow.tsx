@@ -7,7 +7,7 @@
  * ============================================================================
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import {
   View,
   Text,
@@ -33,48 +33,6 @@ import { OtpInput } from '@/components/ui/OtpInput';
 import { simulateExternalRegistryCheck } from '@/data/mockAdminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HomeIcon } from 'lucide-react-native';
-
-// ─── Theme tokens ────────────────────────────────────────────────────────────
-
-const LIGHT = {
-  bg:             '#FFFFFF',
-  bgSurface:      '#F8FAFC',
-  bgCard:         '#FFFFFF',
-  border:         '#E2E8F0',
-  text:           '#0F172A',
-  textSub:        '#475569',
-  textMuted:      '#94A3B8',
-  accent:         '#10B981',
-  accentLight:    'rgba(16,185,129,0.10)',
-  accentBorder:   'rgba(16,185,129,0.25)',
-  danger:         '#EF4444',
-  dangerLight:    'rgba(239,68,68,0.08)',
-  dangerBorder:   'rgba(239,68,68,0.20)',
-  inputBg:        '#F8FAFC',
-  switchTrack:    '#CBD5E1',
-  shadow:         'rgba(15,23,42,0.06)',
-};
-
-const DARK = {
-  bg:             '#0F172A',
-  bgSurface:      '#1E293B',
-  bgCard:         '#1E293B',
-  border:         '#334155',
-  text:           '#F8FAFC',
-  textSub:        '#CBD5E1',
-  textMuted:      '#64748B',
-  accent:         '#10B981',
-  accentLight:    'rgba(16,185,129,0.12)',
-  accentBorder:   'rgba(16,185,129,0.25)',
-  danger:         '#F87171',
-  dangerLight:    'rgba(239,68,68,0.10)',
-  dangerBorder:   'rgba(239,68,68,0.22)',
-  inputBg:        '#0F172A',
-  switchTrack:    '#334155',
-  shadow:         'rgba(0,0,0,0.30)',
-};
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AuthFlow() {
   const insets = useSafeAreaInsets();
@@ -104,22 +62,37 @@ export default function AuthFlow() {
   const [loading, setLoading]           = useState(false);
   const [errorMsg, setErrorMsg]         = useState('');
 
-  // Form
-  const [fullName, setFullName]                   = useState('');
-  const [regEmail, setRegEmail]                   = useState('');
-  const [regPhone, setRegPhone]                   = useState('');
-  const [password, setPassword]                   = useState('');
-  const [confirmPassword, setConfirmPassword]     = useState('');
-  const [loginEmail, setLoginEmail]               = useState('');
-  const [loginPass, setLoginPass]                 = useState('');
-  const [otpCode, setOtpCode]                     = useState('');
-  const [cooldown, setCooldown]                   = useState(0);
+  // Form states
+  const [fullName, setFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPass, setLoginPass] = useState('');
 
-  // KYC
-  const [idCardUri, setIdCardUri]         = useState('');
-  const [licenseUri, setLicenseUri]       = useState('');
-  const [licenseId, setLicenseId]         = useState('');
-  const [bizRegUri, setBizRegUri]         = useState('');
+  // Verification state
+  const [otpVal, setOtpVal] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Split Digit References
+  const pin1Ref = useRef<any>(null);
+  const pin2Ref = useRef<any>(null);
+  const pin3Ref = useRef<any>(null);
+  const pin4Ref = useRef<any>(null);
+  const pin5Ref = useRef<any>(null);
+  const pin6Ref = useRef<any>(null);
+  const pinRefs = [pin1Ref, pin2Ref, pin3Ref, pin4Ref, pin5Ref, pin6Ref];
+
+  // KYC States
+  const [idCardUri, setIdCardUri] = useState('');
+  const [licenseUri, setLicenseUri] = useState('');
+  const [licenseId, setLicenseId] = useState('');
+  const [isLicenseValid, setIsLicenseValid] = useState<boolean | null>(null);
+  const [insuranceUri, setInsuranceUri] = useState('');
+  const [bizRegUri, setBizRegUri] = useState('');
+  const [taxCertUri, setTaxCertUri] = useState('');
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -132,8 +105,22 @@ export default function AuthFlow() {
   const triggerResend = () => {
     handleResendOTP();
     setCooldown(30);
-    setOtpCode('');
-    Alert.alert('Code Resent', 'A new 6-digit code has been sent. (Hint: 123456)');
+    setOtpDigits(['', '', '', '', '', '']);
+    setOtpVal('');
+    Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully (Hint: 123456).');
+  };
+
+  const handleOtpDigitChange = (val: string, idx: number) => {
+    const cleanVal = val.replace(/[^0-9]/g, '');
+    const newDigits = [...otpDigits];
+    newDigits[idx] = cleanVal;
+    setOtpDigits(newDigits);
+    setOtpVal(newDigits.join(''));
+
+    // Move focus forward
+    if (cleanVal && idx < 5) {
+      pinRefs[idx + 1].current?.focus();
+    }
   };
 
   const handleLogout = async () => {
@@ -155,7 +142,8 @@ export default function AuthFlow() {
       setErrorMsg('All fields are required.'); return;
     }
     if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.'); return;
+      setErrorMsg('Passwords do not match.');
+      return;
     }
     if (password.length < 8) {
       setErrorMsg('Password must be at least 8 characters.'); return;
@@ -190,11 +178,18 @@ export default function AuthFlow() {
     if (otpCode.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
     setLoading(true);
     try {
-      const ok = await handleVerifyEmail(otpCode);
-      if (ok) setOtpCode('');
-      else setErrorMsg('Incorrect code. Hint: 123456');
-    } catch { setErrorMsg('Verification failed.'); }
-    finally { setLoading(false); }
+      const match = await handleVerifyEmail(otpVal);
+      if (match) {
+        setOtpVal('');
+        setOtpDigits(['', '', '', '', '', '']);
+      } else {
+        setErrorMsg('Invalid code entered. Use 123456 for simulator.');
+      }
+    } catch (err) {
+      setErrorMsg('Verification failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitPhoneOTP = async () => {
@@ -202,11 +197,45 @@ export default function AuthFlow() {
     if (otpCode.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
     setLoading(true);
     try {
-      const ok = await handleVerifyPhone(otpCode);
-      if (ok) setOtpCode('');
-      else setErrorMsg('Incorrect code. Hint: 123456');
-    } catch { setErrorMsg('Verification failed.'); }
-    finally { setLoading(false); }
+      const match = await handleVerifyPhone(otpVal);
+      if (match) {
+        setOtpVal('');
+        setOtpDigits(['', '', '', '', '', '']);
+      } else {
+        setErrorMsg('Invalid code. Try 123456.');
+      }
+    } catch (err) {
+      setErrorMsg('Phone verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyLicenseExternally = () => {
+    if (!licenseId) {
+      Alert.alert('Missing ID', 'Please enter a valid IER / Professional license ID first.');
+      return;
+    }
+    setLoading(true);
+    setTimeout(async () => {
+      setLoading(false);
+      try {
+        const isValid = await simulateExternalRegistryCheck(licenseId);
+        if (isValid) {
+          setIsLicenseValid(true);
+          Alert.alert(
+            'Registry Match Found!',
+            `Verified License ID: ${licenseId}\nStatus: Active Licensed Professional\nVerification Authority: Institution of Engineers Rwanda (IER)`
+          );
+        } else {
+          setIsLicenseValid(false);
+          Alert.alert('No Match', 'License ID not found in Rwanda IER external database API. Hint: Use IER-2026- prefix.');
+        }
+      } catch (err) {
+        setIsLicenseValid(false);
+        Alert.alert('Validation Error', 'Failed to communicate with external IER API.');
+      }
+    }, 1500);
   };
 
   const submitKYCDocumentation = async () => {
@@ -380,294 +409,330 @@ export default function AuthFlow() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'login') {
     return (
-      <ScreenBase>
-        {/* Header */}
-        <View style={{ paddingTop: 12, marginBottom: 32 }}>
-          <BackButton onPress={() => setStep('landing')} />
-        </View>
-
-        {/* Title */}
-        <View style={{ marginBottom: 28 }}>
-          <Text style={{ color: C.text, fontWeight: '800', fontSize: 26, marginBottom: 6, letterSpacing: -0.3 }}>
-            Welcome back
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 14 }}>
-            Sign in to your account
-          </Text>
-        </View>
-
-        {errorMsg ? <ErrorBanner msg={errorMsg} /> : null}
-
-        <FormInput
-          label="Email address"
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={loginEmail}
-          onChangeText={setLoginEmail}
-          leftIcon={<Ionicons name="mail-outline" size={18} color={C.textMuted} />}
-        />
-
-        <FormInput
-          label="Password"
-          placeholder="Enter your password"
-          secureTextEntry
-          value={loginPass}
-          onChangeText={setLoginPass}
-          leftIcon={<Ionicons name="lock-closed-outline" size={18} color={C.textMuted} />}
-        />
-
-        <TouchableOpacity
-          onPress={() => setStep('forgot-password')}
-          style={{ alignSelf: 'flex-end', marginTop: -8, marginBottom: 24 }}
-        >
-          <Text style={{ color: C.accent, fontSize: 13, fontWeight: '600' }}>
-            Forgot password?
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={submitLogin}
-          disabled={loading}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: C.accent,
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: loading ? 0.7 : 1,
-            flexDirection: 'row',
-            gap: 8,
-          }}
-        >
-          {loading && <ActivityIndicator color="#fff" size="small" />}
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-            {loading ? 'Signing in…' : 'Sign In'}
-          </Text>
-        </TouchableOpacity>
-
-        <Divider />
-
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
-          <Text style={{ color: C.textMuted, fontSize: 13 }}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => setStep('register')}>
-            <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>Sign up</Text>
-          </TouchableOpacity>
-        </View>
-      </ScreenBase>
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 3. REGISTER
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'register') {
-    return (
-      <ScreenBase>
-        <View style={{ paddingTop: 12, marginBottom: 28 }}>
-          <BackButton onPress={() => setStep('landing')} />
-        </View>
-
-        <View style={{ marginBottom: 24 }}>
-          <Text style={{ color: C.text, fontWeight: '800', fontSize: 26, marginBottom: 6, letterSpacing: -0.3 }}>
-            Create account
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 14 }}>
-            Choose your role, then fill in your details
-          </Text>
-        </View>
-
-        {/* Role pill selector */}
-        <View style={{
-          flexDirection: 'row',
-          backgroundColor: C.bgSurface,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: C.border,
-          padding: 4,
-          marginBottom: 24,
-          gap: 4,
-        }}>
-          {(['CLIENT', 'ENGINEER', 'SUPERVISOR', 'SUPPLIER'] as const).map(r => (
-            <TouchableOpacity
-              key={r}
-              onPress={() => {
-                setRole(r);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={{
-                flex: 1,
-                paddingVertical: 8,
-                borderRadius: 9,
-                backgroundColor: role === r ? C.accent : 'transparent',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{
-                fontSize: 10,
-                fontWeight: '700',
-                color: role === r ? '#FFFFFF' : C.textMuted,
-                letterSpacing: 0.3,
-              }}>
-                {r}
-              </Text>
+      <View className={`flex-1 ${colors.bg} justify-center px-6 pt-10`}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          {/* Header Switch */}
+          <View className="flex-row justify-between items-center mb-6">
+            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
+              <Text className="text-emerald-500 font-bold text-lg">←</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {errorMsg ? <ErrorBanner msg={errorMsg} /> : null}
-
-        <FormInput
-          label="Full name / Company name"
-          placeholder="Grace Uwase"
-          value={fullName}
-          onChangeText={setFullName}
-          leftIcon={<Ionicons name="person-outline" size={18} color={C.textMuted} />}
-        />
-        <FormInput
-          label="Email address"
-          placeholder="grace.uwase@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={regEmail}
-          onChangeText={setRegEmail}
-          leftIcon={<Ionicons name="mail-outline" size={18} color={C.textMuted} />}
-        />
-        <FormInput
-          label="MTN MoMo phone number"
-          placeholder="+250 788 100 000"
-          keyboardType="phone-pad"
-          value={regPhone}
-          onChangeText={setRegPhone}
-          leftIcon={<Ionicons name="call-outline" size={18} color={C.textMuted} />}
-        />
-        <FormInput
-          label="Password"
-          placeholder="Minimum 8 characters"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          leftIcon={<Ionicons name="lock-closed-outline" size={18} color={C.textMuted} />}
-        />
-        <FormInput
-          label="Confirm password"
-          placeholder="Re-enter your password"
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          leftIcon={<Ionicons name="lock-closed-outline" size={18} color={C.textMuted} />}
-        />
-
-        <TouchableOpacity
-          onPress={submitRegistration}
-          disabled={loading}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: C.accent,
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: loading ? 0.7 : 1,
-            flexDirection: 'row',
-            gap: 8,
-            marginTop: 4,
-          }}
-        >
-          {loading && <ActivityIndicator color="#fff" size="small" />}
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-            {loading ? 'Creating account…' : 'Create Account'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 20 }}>
-          <Text style={{ color: C.textMuted, fontSize: 13 }}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => setStep('login')}>
-            <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>Sign in</Text>
-          </TouchableOpacity>
-        </View>
-      </ScreenBase>
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 4. VERIFY EMAIL
-  // ══════════════════════════════════════════════════════════════════════════
-  if (step === 'verify-email') {
-    return (
-      <ScreenBase>
-        <View style={{ paddingTop: 12, marginBottom: 32 }}>
-          <BackButton onPress={() => setStep('landing')} />
-        </View>
-
-        <View style={{ alignItems: 'center', marginBottom: 32 }}>
-          <View style={{
-            width: 64, height: 64,
-            backgroundColor: C.accentLight,
-            borderRadius: 32,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: C.accentBorder,
-            marginBottom: 20,
-          }}>
-            <Ionicons name="mail-outline" size={28} color={C.accent} />
+            <View className="flex-row items-center gap-2">
+              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
+              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
+            </View>
           </View>
 
-          <Text style={{ color: C.text, fontWeight: '800', fontSize: 22, marginBottom: 8, textAlign: 'center' }}>
-            Check your email
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-            We sent a 6-digit verification code to
-          </Text>
-          <Text style={{ color: C.accent, fontSize: 14, fontWeight: '600', marginTop: 4 }}>
-            {email}
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 8 }}>
-            Hint: 123456
-          </Text>
-        </View>
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-600 rounded-2xl items-center justify-center mb-3">
+              <Text className="text-white text-2xl font-black">I</Text>
+            </View>
+            <Text className={`${colors.text} text-xl font-bold text-center`}>Login to your account</Text>
+            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Enter your registered email and password</Text>
+          </View>
 
-        {errorMsg ? <ErrorBanner msg={errorMsg} /> : null}
+          {errorMsg ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            </View>
+          ) : null}
 
-        <OtpInput length={6} onComplete={submitEmailOTP} onChange={setOtpCode} />
+          <View className="space-y-4 mb-6">
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1.5 ml-1`}>Email Address</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
+                placeholder="email@example.com"
+                placeholderTextColor="#94a3b8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={loginEmail}
+                onChangeText={setLoginEmail}
+              />
+            </View>
 
-        <TouchableOpacity
-          onPress={submitEmailOTP}
-          disabled={loading || otpCode.length < 6}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: C.accent,
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: (loading || otpCode.length < 6) ? 0.5 : 1,
-            flexDirection: 'row',
-            gap: 8,
-            marginTop: 24,
-          }}
-        >
-          {loading && <ActivityIndicator color="#fff" size="small" />}
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-            {loading ? 'Verifying…' : 'Verify Email'}
-          </Text>
-        </TouchableOpacity>
+            <View>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className={`${colors.textSecondary} text-xs font-bold ml-1`}>Password</Text>
+                <TouchableOpacity onPress={() => setStep('forgot-password')}>
+                  <Text className="text-emerald-500 text-xs font-bold mr-1">Forgot?</Text>
+                </TouchableOpacity>
+              </View>
+              <TextInput
+                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
+                placeholder="••••••••"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry
+                autoCapitalize="none"
+                value={loginPass}
+                onChangeText={setLoginPass}
+              />
+            </View>
+          </View>
 
-        <View style={{ alignItems: 'center', marginTop: 20, gap: 8 }}>
-          <Text style={{ color: C.textMuted, fontSize: 13 }}>Didn't receive a code?</Text>
-          <TouchableOpacity onPress={triggerResend} disabled={cooldown > 0}>
-            <Text style={{
-              color: cooldown > 0 ? C.textMuted : C.accent,
-              fontSize: 13,
-              fontWeight: '600',
-            }}>
-              {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
-            </Text>
+          <TouchableOpacity 
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
+            onPress={submitLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#white" size="small" className="mr-2" />
+            ) : null}
+            <Text className="text-white text-center font-bold text-sm">Sign In</Text>
           </TouchableOpacity>
+
+          <View className="flex-row justify-center mt-5">
+            <Text className={`${colors.textMuted} text-xs`}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => setStep('register')}>
+              <Text className="text-emerald-500 text-xs font-bold">Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Quick-Access Seeded Credentials Drawer */}
+          <View className="bg-slate-200/50 dark:bg-slate-800/40 p-4 rounded-2xl mt-6 border border-slate-300/30 dark:border-slate-700/30">
+            <Text className="text-slate-600 dark:text-emerald-400 font-bold text-[11px] uppercase tracking-wider mb-2">⚡ Tester Autofill Panel</Text>
+            <Text className="text-slate-500 text-[10px] mb-3">Click any pre-seeded profile below to instantly load credentials:</Text>
+            <View className="space-y-2">
+              {mockUsers.map(u => (
+                <TouchableOpacity
+                  key={u.id}
+                  onPress={() => {
+                    setLoginEmail(u.email);
+                    setLoginPass(u.password || 'password123');
+                  }}
+                  className="bg-white/80 dark:bg-slate-900/60 p-2 rounded-xl flex-row justify-between items-center border border-slate-300/20"
+                >
+                  <View>
+                    <Text className="text-[10px] text-slate-800 dark:text-white font-bold">{u.name} ({u.role})</Text>
+                    <Text className="text-[9px] text-slate-500 font-mono mt-0.5">{u.email}</Text>
+                  </View>
+                  <Text className="text-emerald-500 text-[10px] font-bold">Autofill ➔</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // 3. REGISTER SCREEN
+  if (step === 'register') {
+    return (
+      <View className={`flex-1 ${colors.bg} justify-center px-6 pt-12`}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="flex-row justify-between items-center mb-6">
+            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
+              <Text className="text-emerald-500 font-bold text-lg">←</Text>
+            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
+              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
+            </View>
+          </View>
+
+          <View className="items-center mb-6">
+            <Text className={`${colors.text} text-xl font-bold`}>Create Onboarding Profile</Text>
+            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Choose your structural ecosystem role and sign up</Text>
+          </View>
+
+          {/* Role Pill Switcher */}
+          <View className="flex-row bg-slate-200 dark:bg-slate-800 p-1 rounded-xl mb-5 gap-1">
+            {(['CLIENT', 'ENGINEER', 'SUPERVISOR', 'SUPPLIER'] as const).map(r => (
+              <TouchableOpacity
+                key={r}
+                onPress={() => setRole(r)}
+                className={`flex-1 py-2 rounded-lg items-center ${role === r ? 'bg-emerald-650 shadow-sm' : 'bg-transparent'}`}
+              >
+                <Text className={`text-[10px] font-extrabold ${role === r ? 'text-white' : colors.textMuted}`}>{r}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {errorMsg ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            </View>
+          ) : null}
+
+          <View className="space-y-3 mb-6">
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Full Name / Company Name</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="Grace Uwase"
+                placeholderTextColor="#94a3b8"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+            </View>
+
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Email Address</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="grace.uwase@example.com"
+                placeholderTextColor="#94a3b8"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={regEmail}
+                onChangeText={setRegEmail}
+              />
+            </View>
+
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>MTN MoMo Mobile Number</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="+250788100000"
+                placeholderTextColor="#94a3b8"
+                keyboardType="phone-pad"
+                value={regPhone}
+                onChangeText={setRegPhone}
+              />
+            </View>
+
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Create Password</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="•••••••• (Min 8 chars)"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry
+                autoCapitalize="none"
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
+
+            <View>
+              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Confirm Password</Text>
+              <TextInput
+                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
+                placeholder="••••••••"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry
+                autoCapitalize="none"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
+            onPress={submitRegistration}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#white" size="small" className="mr-2" />
+            ) : null}
+            <Text className="text-white text-center font-bold text-sm">Register Account</Text>
+          </TouchableOpacity>
+
+          <View className="flex-row justify-center mt-5">
+            <Text className={`${colors.textMuted} text-xs`}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => setStep('login')}>
+              <Text className="text-emerald-500 text-xs font-bold">Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // 4. VERIFY EMAIL (Custom requested Centered Header with Left Checkground only + 6 Split Digit Inputs)
+  if (step === 'verify-email') {
+    return (
+      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
+        
+        {/* Custom centered Header with only Left Checkground back button */}
+        <View className="flex-row items-center justify-between mb-8 h-12 relative">
+          <TouchableOpacity 
+            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
+            onPress={() => setStep('landing')}
+          >
+            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+          </TouchableOpacity>
+          <View className="flex-1 items-center justify-center">
+            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your email</Text>
+          </View>
+          <View className="w-10 h-10 absolute right-0" /> {/* Spacer */}
         </View>
-      </ScreenBase>
+
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
+              <Text className="text-emerald-500 text-xl">✉</Text>
+            </View>
+            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
+              We've sent a 6-digit OTP code to verify your account registration.
+            </Text>
+          </View>
+
+          {errorMsg ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            </View>
+          ) : null}
+
+          {/* Masked display box */}
+          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
+            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskEmailAddress(email)}</Text>
+            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <Text className="text-emerald-500 text-[10px] font-semibold">OTP Code Sent</Text>
+            </View>
+          </View>
+
+          {/* 6 Split Digits Input Layout */}
+          <View className="mb-6">
+            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
+              Enter 6-Digit OTP (Hint: 123456)
+            </Text>
+            
+            <View className="flex-row justify-between mb-4 px-2 gap-2">
+              {pinRefs.map((ref, idx) => (
+                <TextInput
+                  key={idx}
+                  ref={ref}
+                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  maxLength={1}
+                  keyboardType="number-pad"
+                  value={otpDigits[idx]}
+                  onChangeText={(val) => handleOtpDigitChange(val, idx)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                />
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
+            onPress={submitEmailOTP}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#white" size="small" className="mr-2" />
+            ) : null}
+            <Text className="text-white text-center font-bold text-sm">Verify Email</Text>
+          </TouchableOpacity>
+
+          <View className="items-center">
+            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
+            <TouchableOpacity 
+              onPress={triggerResend}
+              disabled={cooldown > 0}
+              className="mt-2"
+            >
+              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
+                {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -676,78 +741,91 @@ export default function AuthFlow() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'verify-phone') {
     return (
-      <ScreenBase>
-        <View style={{ paddingTop: 12, marginBottom: 32 }}>
-          <BackButton onPress={() => setStep('landing')} />
+      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
+        <View className="flex-row items-center justify-between mb-8 h-12 relative">
+          <TouchableOpacity 
+            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
+            onPress={() => setStep('landing')}
+          >
+            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+          </TouchableOpacity>
+          <View className="flex-1 items-center justify-center">
+            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your phone</Text>
+          </View>
+          <View className="w-10 h-10 absolute right-0" />
         </View>
 
-        <View style={{ alignItems: 'center', marginBottom: 32 }}>
-          <View style={{
-            width: 64, height: 64,
-            backgroundColor: C.accentLight,
-            borderRadius: 32,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: C.accentBorder,
-            marginBottom: 20,
-          }}>
-            <Ionicons name="phone-portrait-outline" size={28} color={C.accent} />
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          
+          <View className="items-center mb-6">
+            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
+              <Text className="text-emerald-500 text-xl">📱</Text>
+            </View>
+            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
+              We've issued a 6-digit verification code to your Rwanda MTN partner number.
+            </Text>
           </View>
 
-          <Text style={{ color: C.text, fontWeight: '800', fontSize: 22, marginBottom: 8, textAlign: 'center' }}>
-            Verify your phone
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
-            We sent a 6-digit code via SMS to
-          </Text>
-          <Text style={{ color: C.accent, fontSize: 14, fontWeight: '600', marginTop: 4 }}>
-            {phone}
-          </Text>
-          <Text style={{ color: C.textMuted, fontSize: 12, marginTop: 8 }}>
-            Hint: 123456
-          </Text>
-        </View>
+          {errorMsg ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            </View>
+          ) : null}
 
-        {errorMsg ? <ErrorBanner msg={errorMsg} /> : null}
+          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
+            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskPhoneNumber(phone)}</Text>
+            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              <Text className="text-emerald-500 text-[10px] font-semibold">SMS Transmitted</Text>
+            </View>
+          </View>
 
-        <OtpInput length={6} onComplete={submitPhoneOTP} onChange={setOtpCode} />
-
-        <TouchableOpacity
-          onPress={submitPhoneOTP}
-          disabled={loading || otpCode.length < 6}
-          activeOpacity={0.85}
-          style={{
-            backgroundColor: C.accent,
-            borderRadius: 14,
-            paddingVertical: 14,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: (loading || otpCode.length < 6) ? 0.5 : 1,
-            flexDirection: 'row',
-            gap: 8,
-            marginTop: 24,
-          }}
-        >
-          {loading && <ActivityIndicator color="#fff" size="small" />}
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-            {loading ? 'Verifying…' : 'Verify Phone'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ alignItems: 'center', marginTop: 20, gap: 8 }}>
-          <Text style={{ color: C.textMuted, fontSize: 13 }}>Didn't receive a code?</Text>
-          <TouchableOpacity onPress={triggerResend} disabled={cooldown > 0}>
-            <Text style={{
-              color: cooldown > 0 ? C.textMuted : C.accent,
-              fontSize: 13,
-              fontWeight: '600',
-            }}>
-              {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend SMS'}
+          {/* 6 Split Digits Input Layout */}
+          <View className="mb-6">
+            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
+              Enter 6-Digit OTP (Hint: 123456)
             </Text>
+            
+            <View className="flex-row justify-between mb-4 px-2 gap-2">
+              {pinRefs.map((ref, idx) => (
+                <TextInput
+                  key={idx}
+                  ref={ref}
+                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  maxLength={1}
+                  keyboardType="number-pad"
+                  value={otpDigits[idx]}
+                  onChangeText={(val) => handleOtpDigitChange(val, idx)}
+                  onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                />
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
+            onPress={submitPhoneOTP}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#white" size="small" className="mr-2" />
+            ) : null}
+            <Text className="text-white text-center font-bold text-sm">Verify Phone</Text>
           </TouchableOpacity>
-        </View>
-      </ScreenBase>
+
+          <View className="items-center">
+            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
+            <TouchableOpacity 
+              onPress={triggerResend}
+              disabled={cooldown > 0}
+              className="mt-2"
+            >
+              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
+                {cooldown > 0 ? `Resend SMS in ${cooldown}s` : 'Resend SMS'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -958,76 +1036,39 @@ export default function AuthFlow() {
   // ══════════════════════════════════════════════════════════════════════════
   if (step === 'kyc-pending') {
     return (
-      <ScreenBase scrollable={false}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 }}>
-          {/* Icon */}
-          <View style={{
-            width: 72, height: 72,
-            backgroundColor: 'rgba(245,158,11,0.10)',
-            borderRadius: 36,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderWidth: 1,
-            borderColor: 'rgba(245,158,11,0.22)',
-            marginBottom: 20,
-          }}>
-            <Ionicons name="time-outline" size={34} color="#F59E0B" />
+      <View className={`flex-1 ${colors.bg} px-6 justify-center`}>
+        <View className="items-center mb-8">
+          <View className="w-16 h-16 bg-amber-500/10 rounded-full items-center justify-center mb-4 border border-amber-500/20">
+            <Text className="text-amber-500 text-3xl font-bold">⏳</Text>
           </View>
-
-          <Text style={{ color: C.text, fontWeight: '800', fontSize: 22, textAlign: 'center', marginBottom: 10 }}>
-            Under review
+          <Text className={`${colors.text} text-xl font-bold text-center`}>KYC Onboarding Under Review</Text>
+          <Text className={`${colors.textMuted} text-xs mt-2 text-center px-4 leading-5`}>
+            Our compliance desk is checking your uploaded credentials against Rwanda registry databases. This generally takes less than 24 hours.
           </Text>
-          <Text style={{ color: C.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 36 }}>
-            Our compliance team is checking your documents against Rwanda registry databases. This typically takes less than 24 hours.
-          </Text>
+        </View>
 
-          {/* Dev simulator */}
-          <View style={{
-            backgroundColor: C.bgSurface,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: C.border,
-            padding: 18,
-            marginBottom: 16,
-            width: '100%',
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Text style={{ color: C.accent, fontSize: 10, fontWeight: '700', letterSpacing: 1.5 }}>
-                ⚡ DEV — ADMIN SIMULATOR
-              </Text>
-            </View>
-            <Text style={{ color: C.textMuted, fontSize: 12, marginBottom: 14, lineHeight: 17 }}>
-              Simulate an admin decision to preview the active dashboard:
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity
-                onPress={() => handleAdminSimulateDecision('APPROVE')}
-                style={{
-                  flex: 1,
-                  backgroundColor: C.accent,
-                  borderRadius: 10,
-                  paddingVertical: 11,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleAdminSimulateDecision('REJECT', 'Document scans are blurry')}
-                style={{
-                  flex: 1,
-                  backgroundColor: C.dangerLight,
-                  borderWidth: 1,
-                  borderColor: C.dangerBorder,
-                  borderRadius: 10,
-                  paddingVertical: 11,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: C.danger, fontWeight: '700', fontSize: 13 }}>Reject</Text>
-              </TouchableOpacity>
-            </View>
+        {/* Dynamic bypass dashboard triggers */}
+        <View className={`p-5 rounded-3xl border mb-6 ${colors.card} space-y-3`}>
+          <Text className="text-emerald-500 font-bold text-xs uppercase tracking-wider text-center">⚡ Tester Review Simulator</Text>
+          <Text className="text-slate-500 text-[10px] text-center leading-4">
+            Simulate an admin action to instantly approve or reject this user account so you can preview the fully active role dashboard:
+          </Text>
+          
+          <View className="flex-row gap-3 pt-2">
+            <TouchableOpacity 
+              onPress={() => handleAdminSimulateDecision('APPROVE')}
+              className="bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl flex-1 items-center"
+            >
+              <Text className="text-white font-bold text-xs">Instantly Approve</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => handleAdminSimulateDecision('REJECT', 'Submitted document scans are blurry')}
+              className="bg-red-500/15 border border-red-500/30 py-2.5 rounded-xl flex-1 items-center"
+            >
+              <Text className="text-red-500 font-bold text-xs">Simulate Reject</Text>
+            </TouchableOpacity>
           </View>
+        </View>
 
           <TouchableOpacity
             onPress={handleLogout}
