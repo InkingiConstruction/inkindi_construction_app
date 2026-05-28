@@ -161,6 +161,102 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
       location: "London, United Kingdom",
       loginTime: "2026-05-25T09:30:00.000Z"
     }
+  },
+
+  // ── DEV TEST CREDENTIALS (matches TEST_CREDENTIALS.txt) ──────────────────
+  {
+    id: "usr-test-client-001",
+    name: "Grace Uwase",
+    email: "grace.uwase@test.com",
+    username: "grace_uwase_test",
+    phone: "+250788100001",
+    role: "CLIENT",
+    status: "ACTIVE",
+    kycStatus: "APPROVED",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "mock-token-grace-test",
+    sessionSample: {
+      sessionId: "sess-grace-test-001",
+      deviceName: "Android Device",
+      ipAddress: "197.243.1.10",
+      location: "Kigali, Rwanda",
+      loginTime: new Date().toISOString()
+    }
+  },
+  {
+    id: "usr-test-engineer-001",
+    name: "Patrick Nkurunziza",
+    email: "patrick.nkurunziza@test.com",
+    username: "patrick_nkurunziza_test",
+    phone: "+250788100002",
+    role: "ENGINEER",
+    status: "ACTIVE",
+    kycStatus: "APPROVED",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    licenseNumber: "IER-2026-0002",
+    insuranceAmount: "15,000,000 RWF",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "mock-token-patrick-test",
+    sessionSample: {
+      sessionId: "sess-patrick-test-001",
+      deviceName: "Android Device",
+      ipAddress: "197.243.1.11",
+      location: "Kigali, Rwanda",
+      loginTime: new Date().toISOString()
+    }
+  },
+  {
+    id: "usr-test-supervisor-001",
+    name: "Amina Habimana",
+    email: "amina.habimana@test.com",
+    username: "amina_habimana_test",
+    phone: "+250788100003",
+    role: "SUPERVISOR",
+    status: "ACTIVE",
+    kycStatus: "APPROVED",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    licenseNumber: "SUP-QC-0003",
+    insuranceAmount: "10,000,000 RWF",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "mock-token-amina-test",
+    sessionSample: {
+      sessionId: "sess-amina-test-001",
+      deviceName: "Android Device",
+      ipAddress: "197.243.1.12",
+      location: "Kigali, Rwanda",
+      loginTime: new Date().toISOString()
+    }
+  },
+  {
+    id: "usr-test-supplier-001",
+    name: "RwaBuild Supplies Ltd",
+    email: "supplies@rwabuild.rw",
+    username: "rwabuild_supplies",
+    phone: "+250788100004",
+    role: "SUPPLIER",
+    status: "ACTIVE",
+    kycStatus: "APPROVED",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    businessRegNumber: "RDB-RWABUILD-0004",
+    taxCertNumber: "RRA-TAX-0004",
+    password: "password123",
+    profilePic: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=200&h=200&q=80",
+    jwtToken: "mock-token-rwabuild-test",
+    sessionSample: {
+      sessionId: "sess-rwabuild-test-001",
+      deviceName: "Android Device",
+      ipAddress: "197.243.1.13",
+      location: "Kigali, Rwanda",
+      loginTime: new Date().toISOString()
+    }
   }
 ];
 

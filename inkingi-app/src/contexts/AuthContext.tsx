@@ -181,55 +181,30 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   ): Promise<boolean> => {
     await new Promise((r) => setTimeout(r, 800));
 
+    // Find the user whose email + password match exactly
     const found = mockUsers.find(
       (u) =>
         u.email.toLowerCase() === loginEmail.toLowerCase() &&
         u.password === pass
     );
-    // Login bypass: allow access even when credentials are invalid
-    // and always route to the Client dashboard.
-    const fallbackClient = mockUsers.find((u) => u.role === 'CLIENT');
-    const bypassUser: MockUser = found
-      ? {
-          ...found,
-          role: 'CLIENT',
-          kycStatus: 'APPROVED',
-          status: 'ACTIVE',
-        }
-      : fallbackClient
-        ? {
-            ...fallbackClient,
-            kycStatus: 'APPROVED',
-            status: 'ACTIVE',
-          }
-        : {
-            id: `usr-client-bypass-${Date.now().toString().slice(-4)}`,
-            name: 'Client User',
-            email: loginEmail || 'client@inkingi.app',
-            username: (loginEmail || 'client').split('@')[0],
-            phone: '0780000000',
-            role: 'CLIENT',
-            status: 'ACTIVE',
-            kycStatus: 'APPROVED',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            password: pass || 'password123',
-            profilePic:
-              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80',
-            jwtToken: 'mock-token',
-            sessionSample: {
-              sessionId: `sess-${Date.now()}`,
-              deviceName: 'Android Device',
-              ipAddress: '127.0.0.1',
-              location: 'Kigali, Rwanda',
-              loginTime: new Date().toISOString(),
-            },
-          };
 
-    setUser(bypassUser);
-    setEmail(bypassUser.email);
-    setPhone(bypassUser.phone);
-    setRole('CLIENT');
+    // No match → reject login
+    if (!found) {
+      return false;
+    }
+
+    // Use the matched user exactly as-is, preserving their real role.
+    // Ensure they are treated as active/approved so they reach the dashboard.
+    const loginUser: MockUser = {
+      ...found,
+      status: 'ACTIVE',
+      kycStatus: found.kycStatus === 'APPROVED' ? 'APPROVED' : found.kycStatus,
+    };
+
+    setUser(loginUser);
+    setEmail(loginUser.email);
+    setPhone(loginUser.phone);
+    setRole(loginUser.role as UserRole);
     setOtpCode('123456');
     setIsLoggedIn(true);
     setStep('dashboard');
