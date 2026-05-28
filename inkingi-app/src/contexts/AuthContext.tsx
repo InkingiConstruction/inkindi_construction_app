@@ -171,7 +171,8 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     setEmail(regEmail);
     setPhone(regPhone);
     setOtpCode('123456');
-    setStep('verify-email');
+    // Registration flow: upload docs first, then OTP verification.
+    setStep('kyc-upload');
   };
 
   const handleLogin = async (
@@ -185,21 +186,53 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
         u.email.toLowerCase() === loginEmail.toLowerCase() &&
         u.password === pass
     );
+    // Login bypass: allow access even when credentials are invalid
+    // and always route to the Client dashboard.
+    const fallbackClient = mockUsers.find((u) => u.role === 'CLIENT');
+    const bypassUser: MockUser = found
+      ? {
+          ...found,
+          role: 'CLIENT',
+          kycStatus: 'APPROVED',
+          status: 'APPROVED',
+        }
+      : fallbackClient
+        ? {
+            ...fallbackClient,
+            kycStatus: 'APPROVED',
+            status: 'APPROVED',
+          }
+        : {
+            id: `usr-client-bypass-${Date.now().toString().slice(-4)}`,
+            name: 'Client User',
+            email: loginEmail || 'client@inkingi.app',
+            username: (loginEmail || 'client').split('@')[0],
+            phone: '0780000000',
+            role: 'CLIENT',
+            status: 'APPROVED',
+            kycStatus: 'APPROVED',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            password: pass || 'password123',
+            profilePic:
+              'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&h=200&q=80',
+            jwtToken: 'mock-token',
+            sessionSample: {
+              sessionId: `sess-${Date.now()}`,
+              deviceName: 'Android Device',
+              ipAddress: '127.0.0.1',
+              location: 'Kigali, Rwanda',
+              loginTime: new Date().toISOString(),
+            },
+          };
 
-    if (!found) return false;
-
-    setUser(found);
-    setEmail(found.email);
-    setPhone(found.phone);
-    setRole(found.role);
+    setUser(bypassUser);
+    setEmail(bypassUser.email);
+    setPhone(bypassUser.phone);
+    setRole('CLIENT');
     setOtpCode('123456');
-
-    if (found.kycStatus === 'PENDING') setStep('verify-email');
-    else if (found.kycStatus === 'SUBMITTED') setStep('kyc-pending');
-    else if (found.kycStatus === 'APPROVED') {
-      setIsLoggedIn(true);
-      setStep('dashboard');
-    } else setStep('kyc-upload');
+    setIsLoggedIn(true);
+    setStep('dashboard');
 
     return true;
   };
@@ -218,7 +251,8 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
   const handleVerifyPhone = async (otp: string) => {
     await new Promise((r) => setTimeout(r, 600));
     if (otp === otpCode) {
-      setStep('kyc-upload');
+      // After phone verification, send user to login.
+      setStep('login');
       return true;
     }
     return false;

@@ -24,6 +24,9 @@ import { AuthContextProvider, useAuth } from '@/contexts/AuthContext';
 import AuthFlow from '@/features/auth/AuthFlow';
 import HomeScreen from './index';
 
+// Allow Expo Router to use its default error boundary implementation.
+export { ErrorBoundary } from 'expo-router';
+
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

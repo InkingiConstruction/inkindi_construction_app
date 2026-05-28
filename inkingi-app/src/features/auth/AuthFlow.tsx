@@ -27,7 +27,8 @@ import { useAuth, AuthStep } from '../../contexts/AuthContext';
 import { simulateExternalRegistryCheck } from '../../data/mockAdminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HomeIcon } from 'lucide-react-native';
-
+import { Picker } from '@react-native-picker/picker';
+import UploadClientDocs from '@/components/UploadClientDocs';
 export default function AuthFlow() {
   const { 
     step, 
@@ -59,6 +60,8 @@ export default function AuthFlow() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Verification state
   const [otpVal, setOtpVal] = useState('');
@@ -96,7 +99,7 @@ export default function AuthFlow() {
     setCooldown(30);
     setOtpDigits(['', '', '', '', '', '']);
     setOtpVal('');
-    Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully (Hint: 123456).');
+    Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully.');
   };
 
   const handleOtpDigitChange = (val: string, idx: number) => {
@@ -168,10 +171,10 @@ const handleLogout = async () => {
       setErrorMsg('All fields are required.');
       return;
     }
-    if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
-      return;
-    }
+    // if (password !== confirmPassword) {
+    //   setErrorMsg('Passwords do not match.');
+    //   return;
+    // }
     if (password.length < 8) {
       setErrorMsg('Password must be at least 8 characters.');
       return;
@@ -232,7 +235,7 @@ const handleLogout = async () => {
         setOtpVal('');
         setOtpDigits(['', '', '', '', '', '']);
       } else {
-        setErrorMsg('Invalid code entered. Use 123456 for simulator.');
+        setErrorMsg('Invalid code entered. Please try again.');
       }
     } catch (err) {
       setErrorMsg('Verification failed.');
@@ -255,7 +258,7 @@ const handleLogout = async () => {
         setOtpVal('');
         setOtpDigits(['', '', '', '', '', '']);
       } else {
-        setErrorMsg('Invalid code. Try 123456.');
+        setErrorMsg('Invalid code. Please try again.');
       }
     } catch (err) {
       setErrorMsg('Phone verification failed.');
@@ -398,23 +401,20 @@ const handleLogout = async () => {
       <View className={`flex-1 ${colors.bg} justify-center px-6 pt-10`}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           
-          {/* Header Switch */}
+          {/* Header */}
           <View className="flex-row justify-between items-center mb-6">
-            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
-              <Text className="text-emerald-500 font-bold text-lg">←</Text>
+            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 rounded-full items-center justify-center">
+              <Text className="text-[#007E6E] font-bold text-2xl">‹</Text>
             </TouchableOpacity>
-            <View className="flex-row items-center gap-2">
-              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
-              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
-            </View>
+            <View className="w-10 h-10" />
           </View>
 
           <View className="items-center mb-6">
-            <View className="w-14 h-14 bg-emerald-600 rounded-2xl items-center justify-center mb-3">
-              <Text className="text-white text-2xl font-black">I</Text>
+            <View className="mb-3">
+              <HomeIcon size={44} color="#007E6E" />
             </View>
-            <Text className={`${colors.text} text-xl font-bold text-center`}>Login to your account</Text>
-            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Enter your registered email and password</Text>
+            <Text className="text-[#007E6E] text-2xl font-extrabold text-center">Hi, WELCOME BACK</Text>
+            <Text className={`${colors.textMuted} mt-1 text-sm text-center`}>Sign in to your account</Text>
           </View>
 
           {errorMsg ? (
@@ -425,77 +425,67 @@ const handleLogout = async () => {
 
           <View className="space-y-4 mb-6">
             <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1.5 ml-1`}>Email Address</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
-                placeholder="email@example.com"
-                placeholderTextColor="#94a3b8"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={loginEmail}
-                onChangeText={setLoginEmail}
-              />
+              <Text className={`${colors.textSecondary} text-sm font-semibold mb-2 ml-1`}>Email</Text>
+              <View className={`flex-row items-center border rounded-xl px-4 ${colors.input}`}>
+                <Text className="text-slate-400 text-lg mr-3">✉️</Text>
+                <TextInput
+                  className={`flex-1 py-3 text-sm ${colors.text}`}
+                  placeholder="Enter your Email"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={loginEmail}
+                  onChangeText={setLoginEmail}
+                />
+              </View>
             </View>
 
             <View>
-              <View className="flex-row justify-between mb-1.5">
-                <Text className={`${colors.textSecondary} text-xs font-bold ml-1`}>Password</Text>
-                <TouchableOpacity onPress={() => setStep('forgot-password')}>
-                  <Text className="text-emerald-500 text-xs font-bold mr-1">Forgot?</Text>
+              <Text className={`${colors.textSecondary} text-sm font-semibold mb-2 ml-1`}>Password</Text>
+              <View className={`flex-row items-center border rounded-xl px-4 ${colors.input}`}>
+                <Text className="text-slate-400 text-lg mr-3">🔒</Text>
+                <TextInput
+                  className={`flex-1 py-3 text-sm ${colors.text}`}
+                  placeholder="Enter password"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showLoginPassword}
+                  autoCapitalize="none"
+                  value={loginPass}
+                  onChangeText={setLoginPass}
+                />
+                <TouchableOpacity onPress={() => setShowLoginPassword((p) => !p)} className="py-2 pl-3">
+                  <Text className="text-slate-500 text-base">{showLoginPassword ? '🙈' : '👁️'}</Text>
                 </TouchableOpacity>
               </View>
-              <TextInput
-                className={`border rounded-xl px-4 py-3.5 text-sm ${colors.input}`}
-                placeholder="••••••••"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry
-                autoCapitalize="none"
-                value={loginPass}
-                onChangeText={setLoginPass}
-              />
             </View>
           </View>
 
+          <View className="flex-row items-center justify-between mb-5">
+            <TouchableOpacity onPress={() => setRememberMe((p) => !p)} className="flex-row items-center">
+              <View className={`w-4 h-4 rounded border mr-2 ${rememberMe ? 'bg-[#007E6E] border-[#007E6E]' : 'border-slate-400'}`} />
+              <Text className={`${colors.textMuted} text-xs`}>Remember me</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setStep('forgot-password')}>
+              <Text className="text-[#007E6E] text-xs font-semibold">Forget password</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
+            className="bg-[#007E6E] active:bg-[#00685B] py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
             onPress={submitLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-sm">Sign In</Text>
+            <Text className="text-white text-center font-bold text-base">Login</Text>
           </TouchableOpacity>
 
           <View className="flex-row justify-center mt-5">
             <Text className={`${colors.textMuted} text-xs`}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => setStep('register')}>
-              <Text className="text-emerald-500 text-xs font-bold">Sign Up</Text>
+              <Text className="text-[#007E6E] text-xs font-bold">Sign Up</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Quick-Access Seeded Credentials Drawer */}
-          <View className="bg-slate-200/50 dark:bg-slate-800/40 p-4 rounded-2xl mt-6 border border-slate-300/30 dark:border-slate-700/30">
-            <Text className="text-slate-600 dark:text-emerald-400 font-bold text-[11px] uppercase tracking-wider mb-2">⚡ Tester Autofill Panel</Text>
-            <Text className="text-slate-500 text-[10px] mb-3">Click any pre-seeded profile below to instantly load credentials:</Text>
-            <View className="space-y-2">
-              {mockUsers.map(u => (
-                <TouchableOpacity
-                  key={u.id}
-                  onPress={() => {
-                    setLoginEmail(u.email);
-                    setLoginPass(u.password || 'password123');
-                  }}
-                  className="bg-white/80 dark:bg-slate-900/60 p-2 rounded-xl flex-row justify-between items-center border border-slate-300/20"
-                >
-                  <View>
-                    <Text className="text-[10px] text-slate-800 dark:text-white font-bold">{u.name} ({u.role})</Text>
-                    <Text className="text-[9px] text-slate-500 font-mono mt-0.5">{u.email}</Text>
-                  </View>
-                  <Text className="text-emerald-500 text-[10px] font-bold">Autofill ➔</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         </ScrollView>
       </View>
@@ -505,185 +495,239 @@ const handleLogout = async () => {
   // 3. REGISTER SCREEN
   if (step === 'register') {
     return (
-      <View className={`flex-1 ${colors.bg} justify-center px-6 pt-12`}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          
-          <View className="flex-row justify-between items-center mb-6">
-            <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 bg-slate-200/50 dark:bg-slate-800/50 rounded-full items-center justify-center border border-slate-300/30 dark:border-slate-700/30">
-              <Text className="text-emerald-500 font-bold text-lg">←</Text>
-            </TouchableOpacity>
-            <View className="flex-row items-center gap-2">
-              <Text className={`${colors.textMuted} text-xs font-semibold`}>Dark Mode</Text>
-              <Switch value={theme === 'dark'} onValueChange={toggleTheme} trackColor={{ true: '#10b981', false: '#cbd5e1' }} />
-            </View>
+    <View className={`flex-1 ${colors.bg} px-6 pt-14`}>
+  <ScrollView
+    contentContainerStyle={{
+      flexGrow: 1,
+      paddingBottom: 40,
+    }}
+    showsVerticalScrollIndicator={false}
+  >
+    {/* Logo / Header */}
+    <View className="items-center mb-10">
+      <View className="mb-4">
+            <HomeIcon size={44} color="#007E6E" />
           </View>
 
-          <View className="items-center mb-6">
-            <Text className={`${colors.text} text-xl font-bold`}>Create Onboarding Profile</Text>
-            <Text className={`${colors.textMuted} mt-1 text-xs text-center`}>Choose your structural ecosystem role and sign up</Text>
-          </View>
+      <Text className="text-[#007E6E] text-3xl font-extrabold tracking-wide">
+        JOIN INKINGI
+      </Text>
 
-          {/* Role Pill Switcher */}
-          <View className="flex-row bg-slate-200 dark:bg-slate-800 p-1 rounded-xl mb-5 gap-1">
-            {(['CLIENT', 'ENGINEER', 'SUPERVISOR', 'SUPPLIER'] as const).map(r => (
-              <TouchableOpacity
-                key={r}
-                onPress={() => setRole(r)}
-                className={`flex-1 py-2 rounded-lg items-center ${role === r ? 'bg-emerald-650 shadow-sm' : 'bg-transparent'}`}
-              >
-                <Text className={`text-[10px] font-extrabold ${role === r ? 'text-white' : colors.textMuted}`}>{r}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+      <Text
+        className={`${colors.textMuted} text-base mt-2 text-center`}
+      >
+        Create your account to get started
+      </Text>
+    </View>
 
-          {errorMsg ? (
-            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
-            </View>
-          ) : null}
-
-          <View className="space-y-3 mb-6">
-            <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Full Name / Company Name</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
-                placeholder="Grace Uwase"
-                placeholderTextColor="#94a3b8"
-                value={fullName}
-                onChangeText={setFullName}
-              />
-            </View>
-
-            <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Email Address</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
-                placeholder="grace.uwase@example.com"
-                placeholderTextColor="#94a3b8"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={regEmail}
-                onChangeText={setRegEmail}
-              />
-            </View>
-
-            <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>MTN MoMo Mobile Number</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
-                placeholder="+250788100000"
-                placeholderTextColor="#94a3b8"
-                keyboardType="phone-pad"
-                value={regPhone}
-                onChangeText={setRegPhone}
-              />
-            </View>
-
-            <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Create Password</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
-                placeholder="•••••••• (Min 8 chars)"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry
-                autoCapitalize="none"
-                value={password}
-                onChangeText={setPassword}
-              />
-            </View>
-
-            <View>
-              <Text className={`${colors.textSecondary} text-xs font-bold mb-1 ml-1`}>Confirm Password</Text>
-              <TextInput
-                className={`border rounded-xl px-4 py-3 text-xs ${colors.input}`}
-                placeholder="••••••••"
-                placeholderTextColor="#94a3b8"
-                secureTextEntry
-                autoCapitalize="none"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center"
-            onPress={submitRegistration}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#white" size="small" className="mr-2" />
-            ) : null}
-            <Text className="text-white text-center font-bold text-sm">Register Account</Text>
-          </TouchableOpacity>
-
-          <View className="flex-row justify-center mt-5">
-            <Text className={`${colors.textMuted} text-xs`}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => setStep('login')}>
-              <Text className="text-emerald-500 text-xs font-bold">Sign In</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+    {/* Error Message */}
+    {errorMsg ? (
+      <View className="bg-red-100 border border-red-300 rounded-2xl p-3 mb-5">
+        <Text className="text-red-600 text-center text-sm font-medium">
+          {errorMsg}
+        </Text>
       </View>
+    ) : null}
+
+    {/* Full Name */}
+    <View className="mb-5">
+      <Text
+        className={`${colors.textSecondary} text-base font-semibold mb-2 ml-1`}
+      >
+        Full Name
+      </Text>
+
+      <View
+        className={`flex-row items-center border rounded-2xl px-4 py-1 ${colors.input}`}
+      >
+        <Text className="text-slate-400 text-xl mr-3">👤</Text>
+
+        <TextInput
+          className={`flex-1 border-[#D5D5D5] py-3 text-base ${colors.text}`}
+          placeholder="Enter your name"
+          placeholderTextColor="#9ca3af"
+          value={fullName}
+          onChangeText={setFullName}
+        />
+      </View>
+    </View>
+
+    {/* Email */}
+    <View className="mb-5">
+      <Text
+        className={`${colors.textSecondary} text-base font-semibold mb-2 ml-1`}
+      >
+        Email Address
+      </Text>
+
+      <View
+        className={`flex-row items-center border rounded-2xl px-4 py-1 ${colors.input}`}
+      >
+        <Text className="text-slate-400 text-xl mr-3">✉️</Text>
+
+        <TextInput
+          className={`flex-1 border-[#D5D5D5] py-3 text-base ${colors.text}`}
+          placeholder="Enter your Email"
+          placeholderTextColor="#9ca3af"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={regEmail}
+          onChangeText={setRegEmail}
+        />
+      </View>
+    </View>
+
+    {/* Phone */}
+    <View className="mb-5">
+      <Text
+        className={`${colors.textSecondary} text-base font-semibold mb-2 ml-1`}
+      >
+        Phone Number
+      </Text>
+
+      <View
+        className={`flex-row items-center border rounded-2xl px-4 py-1 ${colors.input}`}
+      >
+        <Text className="text-slate-400 text-xl mr-3">📞</Text>
+
+        <TextInput
+          className={`flex-1 border-[#D5D5D5] py-3 text-base ${colors.text}`}
+          placeholder="Enter phone number"
+          placeholderTextColor="#9ca3af"
+          keyboardType="phone-pad"
+          value={regPhone}
+          onChangeText={setRegPhone}
+        />
+      </View>
+    </View>
+
+    {/* Password */}
+    <View className="mb-5">
+      <Text
+        className={`${colors.textSecondary} text-base font-semibold mb-2 ml-1`}
+      >
+        Password
+      </Text>
+
+      <View
+        className={`flex-row items-center border rounded-2xl px-4 py-1 ${colors.input}`}
+      >
+        <Text className="text-slate-400 text-xl mr-3">🔒</Text>
+
+        <TextInput
+          className={`flex-1 py-3 border-[#D5D5D5] text-base ${colors.text}`}
+          placeholder="Enter password"
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+          autoCapitalize="none"
+          value={password}
+          onChangeText={setPassword}
+        />
+
+        <TouchableOpacity>
+          <Text className="text-slate-400 text-lg">👁️</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+
+    {/* Select Role */}
+    <View className="mb-8">
+      <Text
+        className={`${colors.textSecondary} text-base font-semibold mb-2 ml-1`}
+      >
+        Select Role
+      </Text>
+
+      <View
+        className={`border rounded-2xl px-4 ${colors.input}`}
+      >
+        <Picker
+          selectedValue={role}
+          onValueChange={(itemValue) => setRole(itemValue)}
+          style={{
+            color: theme === 'dark' ? '#fff' : '#111827',
+          }}
+        >
+          <Picker.Item label="Choose role" value="" />
+          <Picker.Item label="Client" value="CLIENT" />
+          <Picker.Item label="Engineer" value="ENGINEER" />
+          <Picker.Item label="Supervisor" value="SUPERVISOR" />
+          <Picker.Item label="Supplier" value="SUPPLIER" />
+          <Picker.Item label="Admin" value="ADMIN" />
+        </Picker>
+      </View>
+    </View>
+
+    {/* Continue Button */}
+    <TouchableOpacity
+      className="bg-emerald-600 py-4 rounded-2xl shadow-md"
+      onPress={()=>setStep("kyc-upload")}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#fff" size="small" />
+      ) : (
+        <Text className="text-white text-center font-bold text-lg">
+          Continue
+        </Text>
+      )}
+    </TouchableOpacity>
+
+    {/* Sign In */}
+    <View className="flex-row justify-center mt-8">
+      <Text className={`${colors.textMuted} text-base`}>
+        Already have an account!{' '}
+      </Text>
+
+      <TouchableOpacity onPress={() => setStep('login')}>
+        <Text className="text-emerald-600 text-base font-bold">
+          Sign In
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </ScrollView>
+</View>
     );
   }
-
+if (step === 'kyc-upload') {
+  return <UploadClientDocs />;
+}
   // 4. VERIFY EMAIL (Custom requested Centered Header with Left Checkground only + 6 Split Digit Inputs)
   if (step === 'verify-email') {
     return (
-      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
-        
-        {/* Custom centered Header with only Left Checkground back button */}
-        <View className="flex-row items-center justify-between mb-8 h-12 relative">
-          <TouchableOpacity 
-            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
-            onPress={() => setStep('landing')}
-          >
-            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+      <View className={`flex-1 ${colors.bg} px-6 pt-14`}>
+        <View className="flex-row items-center justify-between mb-8">
+          <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 items-center justify-center">
+            <Text className="text-[#007E6E] text-2xl font-bold">‹</Text>
           </TouchableOpacity>
-          <View className="flex-1 items-center justify-center">
-            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your email</Text>
-          </View>
-          <View className="w-10 h-10 absolute right-0" /> {/* Spacer */}
+          <Text className="text-[#007E6E] text-lg font-bold">OTP Verification</Text>
+          <View className="w-10 h-10" />
         </View>
 
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          
-          <View className="items-center mb-6">
-            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
-              <Text className="text-emerald-500 text-xl">✉</Text>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <View className="items-center mt-10 mb-10">
+            <View className="w-16 h-16 bg-[#007E6E] rounded-2xl items-center justify-center mb-6">
+              <Text className="text-white text-2xl font-bold">✉️</Text>
             </View>
-            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
-              We've sent a 6-digit OTP code to verify your account registration.
+            <Text className={`${colors.textSecondary} text-base text-center`}>
+              Enter the OTP code sent to{'\n'}your email
             </Text>
           </View>
 
           {errorMsg ? (
-            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-6">
+              <Text className="text-red-500 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
-          {/* Masked display box */}
-          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
-            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskEmailAddress(email)}</Text>
-            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              <Text className="text-emerald-500 text-[10px] font-semibold">OTP Code Sent</Text>
-            </View>
-          </View>
-
           {/* 6 Split Digits Input Layout */}
-          <View className="mb-6">
-            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
-              Enter 6-Digit OTP (Hint: 123456)
-            </Text>
-            
-            <View className="flex-row justify-between mb-4 px-2 gap-2">
+          <View className="mb-10">
+            <View className="flex-row justify-between mb-4 px-2">
               {pinRefs.map((ref, idx) => (
                 <TextInput
                   key={idx}
                   ref={ref}
-                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  className={`w-12 h-12 border rounded-xl text-center text-lg font-bold ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
                   maxLength={1}
                   keyboardType="number-pad"
                   value={otpDigits[idx]}
@@ -695,25 +739,20 @@ const handleLogout = async () => {
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
+            className="bg-[#007E6E] active:bg-[#00685B] py-4 rounded-xl shadow-md flex-row justify-center items-center mb-6"
             onPress={submitEmailOTP}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-sm">Verify Email</Text>
+            <Text className="text-white text-center font-bold text-base">Verify</Text>
           </TouchableOpacity>
 
           <View className="items-center">
-            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
-            <TouchableOpacity 
-              onPress={triggerResend}
-              disabled={cooldown > 0}
-              className="mt-2"
-            >
-              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
-                {cooldown > 0 ? `Resend Code in ${cooldown}s` : 'Resend Code'}
+            <TouchableOpacity onPress={triggerResend} disabled={cooldown > 0} className="mt-2">
+              <Text className={`font-semibold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-[#007E6E]'}`}>
+                {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Code'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -725,56 +764,39 @@ const handleLogout = async () => {
   // 5. VERIFY PHONE SCREEN
   if (step === 'verify-phone') {
     return (
-      <View className={`flex-1 ${colors.bg} px-6 pt-16`}>
-        <View className="flex-row items-center justify-between mb-8 h-12 relative">
-          <TouchableOpacity 
-            className="w-10 h-10 rounded-full bg-slate-200/50 dark:bg-slate-800/50 items-center justify-center border border-slate-350 dark:border-slate-700 absolute left-0"
-            onPress={() => setStep('landing')}
-          >
-            <Text className="text-emerald-500 text-xl font-bold">←</Text>
+      <View className={`flex-1 ${colors.bg} px-6 pt-14`}>
+        <View className="flex-row items-center justify-between mb-8">
+          <TouchableOpacity onPress={() => setStep('landing')} className="w-10 h-10 items-center justify-center">
+            <Text className="text-[#007E6E] text-2xl font-bold">‹</Text>
           </TouchableOpacity>
-          <View className="flex-1 items-center justify-center">
-            <Text className={`${colors.text} text-base font-bold text-center`}>Verify your phone</Text>
-          </View>
-          <View className="w-10 h-10 absolute right-0" />
+          <Text className="text-[#007E6E] text-lg font-bold">OTP Verification</Text>
+          <View className="w-10 h-10" />
         </View>
 
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          
-          <View className="items-center mb-6">
-            <View className="w-14 h-14 bg-emerald-500/10 rounded-full items-center justify-center mb-3 border border-emerald-500/20">
-              <Text className="text-emerald-500 text-xl">📱</Text>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+          <View className="items-center mt-10 mb-10">
+            <View className="w-16 h-16 bg-[#007E6E] rounded-2xl items-center justify-center mb-6">
+              <Text className="text-white text-2xl font-bold">📱</Text>
             </View>
-            <Text className={`${colors.textMuted} text-center px-4 leading-5 text-xs`}>
-              We've issued a 6-digit verification code to your Rwanda MTN partner number.
+            <Text className={`${colors.textSecondary} text-base text-center`}>
+              Enter the OTP code sent to{'\n'}your phone
             </Text>
           </View>
 
           {errorMsg ? (
-            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
-              <Text className="text-red-400 text-center text-xs font-semibold">{errorMsg}</Text>
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-6">
+              <Text className="text-red-500 text-center text-xs font-semibold">{errorMsg}</Text>
             </View>
           ) : null}
 
-          <View className={`border rounded-xl py-2 px-4 flex-row items-center justify-between mb-6 ${colors.card}`}>
-            <Text className={`${colors.textSecondary} font-semibold text-xs`}>{maskPhoneNumber(phone)}</Text>
-            <View className="bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              <Text className="text-emerald-500 text-[10px] font-semibold">SMS Transmitted</Text>
-            </View>
-          </View>
-
           {/* 6 Split Digits Input Layout */}
-          <View className="mb-6">
-            <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
-              Enter 6-Digit OTP (Hint: 123456)
-            </Text>
-            
-            <View className="flex-row justify-between mb-4 px-2 gap-2">
+          <View className="mb-10">
+            <View className="flex-row justify-between mb-4 px-2">
               {pinRefs.map((ref, idx) => (
                 <TextInput
                   key={idx}
                   ref={ref}
-                  className={`w-11 h-14 border rounded-xl text-center text-lg font-bold ${colors.input} focus:border-emerald-500`}
+                  className={`w-12 h-12 border rounded-xl text-center text-lg font-bold ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'}`}
                   maxLength={1}
                   keyboardType="number-pad"
                   value={otpDigits[idx]}
@@ -786,25 +808,24 @@ const handleLogout = async () => {
           </View>
 
           <TouchableOpacity 
-            className="bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-xl shadow-md flex-row justify-center items-center mb-5"
+            className="bg-[#007E6E] active:bg-[#00685B] py-4 rounded-xl shadow-md flex-row justify-center items-center mb-6"
             onPress={submitPhoneOTP}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#white" size="small" className="mr-2" />
             ) : null}
-            <Text className="text-white text-center font-bold text-sm">Verify Phone</Text>
+            <Text className="text-white text-center font-bold text-base">Verify</Text>
           </TouchableOpacity>
 
           <View className="items-center">
-            <Text className={`${colors.textMuted} text-xs`}>Didn't receive a code?</Text>
             <TouchableOpacity 
               onPress={triggerResend}
               disabled={cooldown > 0}
               className="mt-2"
             >
-              <Text className={`font-bold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-emerald-500'}`}>
-                {cooldown > 0 ? `Resend SMS in ${cooldown}s` : 'Resend SMS'}
+              <Text className={`font-semibold text-xs ${cooldown > 0 ? 'text-slate-400' : 'text-[#007E6E]'}`}>
+                {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Code'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -947,29 +968,6 @@ const handleLogout = async () => {
           <Text className={`${colors.textMuted} text-xs mt-2 text-center px-4 leading-5`}>
             Our compliance desk is checking your uploaded credentials against Rwanda registry databases. This generally takes less than 24 hours.
           </Text>
-        </View>
-
-        {/* Dynamic bypass dashboard triggers */}
-        <View className={`p-5 rounded-3xl border mb-6 ${colors.card} space-y-3`}>
-          <Text className="text-emerald-500 font-bold text-xs uppercase tracking-wider text-center">⚡ Tester Review Simulator</Text>
-          <Text className="text-slate-500 text-[10px] text-center leading-4">
-            Simulate an admin action to instantly approve or reject this user account so you can preview the fully active role dashboard:
-          </Text>
-          
-          <View className="flex-row gap-3 pt-2">
-            <TouchableOpacity 
-              onPress={() => handleAdminSimulateDecision('APPROVE')}
-              className="bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl flex-1 items-center"
-            >
-              <Text className="text-white font-bold text-xs">Instantly Approve</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => handleAdminSimulateDecision('REJECT', 'Submitted document scans are blurry')}
-              className="bg-red-500/15 border border-red-500/30 py-2.5 rounded-xl flex-1 items-center"
-            >
-              <Text className="text-red-500 font-bold text-xs">Simulate Reject</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         <TouchableOpacity 

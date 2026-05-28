@@ -25,10 +25,32 @@ import {
   Image,
   Switch 
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { MockProject } from '../../data/mockAdminService';
 import TabButton from '../../components/ui/TabButton';
 import LottieAnimation from '../../components/ui/LottieAnimation';
+
+type AddedProject = {
+  id: string;
+  name: string;
+  location: string;
+  startDate: string;
+  dueDate: string;
+  leadEngineer: string;
+  description: string;
+  planFileName: string;
+  planFileUri: string;
+  progress: number;
+  budget: number;
+  status: 'Pending' | 'Active' | 'Completed';
+};
+
+type DashboardProject = MockProject & {
+  planFileName?: string;
+  planFileUri?: string;
+  statusLabel?: string;
+};
 
 export default function ClientDashboard() {
   const { 
@@ -72,12 +94,51 @@ export default function ClientDashboard() {
   const [momoNumber, setMomoNumber] = useState(user?.phone || '');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  const [addedProjects, setAddedProjects] = useState<AddedProject[]>([]);
+  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+
+  // Add project form state
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectLocation, setNewProjectLocation] = useState('');
+  const [newProjectStartDate, setNewProjectStartDate] = useState('');
+  const [newProjectDueDate, setNewProjectDueDate] = useState('');
+  const [newProjectLeadEngineer, setNewProjectLeadEngineer] = useState('');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [projectPlanFileName, setProjectPlanFileName] = useState('');
+  const [projectPlanFileUri, setProjectPlanFileUri] = useState('');
+
   // Active project list
-  const clientProjects = projects.filter(p => p.client === user?.name || p.client === 'Grace Uwase');
-  const [selectedProject, setSelectedProject] = useState<MockProject | null>(clientProjects[0] || null);
+  const clientProjects: DashboardProject[] = projects.filter(
+    (p) => p.client === user?.name || p.client === 'Grace Uwase'
+  );
+  const addedProjectsAsDashboard: DashboardProject[] = addedProjects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    location: p.location,
+    client: user?.name || 'Client User',
+    engineer: p.leadEngineer,
+    supervisor: 'Not assigned',
+    progress: p.progress,
+    budget: p.budget,
+    escrowBalance: 0,
+    milestones: [],
+    status: 'DRAFT',
+    planFileName: p.planFileName,
+    planFileUri: p.planFileUri,
+    statusLabel: p.status,
+  }));
+  const allClientProjects: DashboardProject[] = [
+    ...addedProjectsAsDashboard,
+    ...clientProjects,
+  ];
+  const [selectedProject, setSelectedProject] = useState<DashboardProject | null>(
+    allClientProjects[0] || null
+  );
 
   // Milestone list state
-  const [milestones, setMilestones] = useState(selectedProject?.milestones || []);
+  const [milestones, setMilestones] = useState(
+    selectedProject?.milestones || []
+  );
 
   // Messages states
   const [chatText, setChatText] = useState('');
@@ -192,12 +253,68 @@ export default function ClientDashboard() {
     setShowMilestoneModal(true);
   };
 
+  const handlePickProjectPlan = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (!result.canceled && result.assets?.length) {
+        setProjectPlanFileName(result.assets[0].name || 'Selected file');
+        setProjectPlanFileUri(result.assets[0].uri || '');
+      }
+    } catch (error) {
+      Alert.alert('Upload Failed', 'Failed to select project plan file.');
+    }
+  };
+
+  const resetAddProjectForm = () => {
+    setNewProjectName('');
+    setNewProjectLocation('');
+    setNewProjectStartDate('');
+    setNewProjectDueDate('');
+    setNewProjectLeadEngineer('');
+    setNewProjectDescription('');
+    setProjectPlanFileName('');
+    setProjectPlanFileUri('');
+  };
+
+  const handleAddProject = () => {
+    if (!newProjectName.trim() || !newProjectLocation.trim()) {
+      Alert.alert('Missing Details', 'Project name and location are required.');
+      return;
+    }
+
+    const newProject: AddedProject = {
+      id: `added-project-${Date.now()}`,
+      name: newProjectName.trim(),
+      location: newProjectLocation.trim(),
+      startDate: newProjectStartDate.trim(),
+      dueDate: newProjectDueDate.trim(),
+      leadEngineer: newProjectLeadEngineer.trim() || 'Not assigned',
+      description: newProjectDescription.trim(),
+      planFileName: projectPlanFileName || 'No file uploaded',
+      planFileUri: projectPlanFileUri,
+      progress: 3,
+      budget: 0,
+      status: 'Pending',
+    };
+
+    setAddedProjects((prev) => [newProject, ...prev]);
+    setShowAddProjectModal(false);
+    resetAddProjectForm();
+    Alert.alert('Success', 'Project added successfully.');
+  };
+
   return (
     <View className={`flex-1 ${colors.bg}`}>
       
       {/* Dynamic Header */}
-      <View className={`px-6 pt-14 pb-4 flex-row justify-between items-center ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
-        <View className="flex-row items-center gap-3">
+      <View className={`px-6 pt-14 pb-4 ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
+        <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center gap-3">
           {user?.profilePic ? (
             <Image 
               source={{ uri: user.profilePic }} 
@@ -209,17 +326,15 @@ export default function ClientDashboard() {
             </View>
           )}
           <View>
-            <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Client Workspace</Text>
-            <Text className={`${colors.text} text-base font-bold`}>{user?.name}</Text>
+            <Text className={`${colors.textSecondary} text-sm font-bold`}>Welcome !</Text>
+            <Text className="text-[#007E6E] text-base font-extrabold">{user?.name}</Text>
           </View>
-        </View>
+          </View>
 
-        <TouchableOpacity 
-          onPress={handleLogout}
-          className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg"
-        >
-          <Text className="text-red-500 text-xs font-bold">Logout</Text>
-        </TouchableOpacity>
+          <TouchableOpacity className="w-10 h-10 items-center justify-center">
+            <Text className="text-[#007E6E] text-xl">🔔</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content Areas based on Tab state */}
@@ -232,62 +347,110 @@ export default function ClientDashboard() {
         {/* ================= TAB: DASHBOARD ================= */}
         {currentTab === 'dashboard' && (
           <View className="space-y-5">
-            {/* Balance Card */}
-            <View className="bg-primary-500 rounded-3xl p-5 shadow-lg relative overflow-hidden">
-              <View className="flex-row justify-between items-center mb-1">
-                <View className="flex-1 pr-2">
-                  <Text className="text-primary-100 text-xs font-openSans font-bold tracking-wider uppercase mb-1">Escrow Vault Balance</Text>
-                  <Text className="text-white text-3xl font-robotoMono font-extrabold">
-                    {escrowBalance.toLocaleString()} <Text className="text-primary-200 text-lg">RWF</Text>
-                  </Text>
-                </View>
-                <LottieAnimation type="secure" size={60} />
-              </View>
-              <TouchableOpacity 
-                onPress={() => setShowDepositModal(true)}
-                className="bg-white/20 active:bg-white/30 py-3 rounded-xl items-center border border-white/20 shadow-sm mt-3"
-              >
-                <Text className="text-white font-openSans font-bold text-sm">💰 Quick Escrow Deposit</Text>
+            {/* Search bar */}
+            <View className={`flex-row items-center border rounded-xl px-4 py-2.5 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+              <Text className="text-slate-400 text-base mr-2">🔎</Text>
+              <TextInput
+                placeholder="Enter the name"
+                placeholderTextColor="#94a3b8"
+                className={`flex-1 text-sm ${colors.text}`}
+              />
+              <TouchableOpacity className="ml-2">
+                <Text className="text-slate-500 text-lg">⚙️</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Active Build High-level Summary Card */}
-            {selectedProject ? (
-              <TouchableOpacity 
-                onPress={() => {
-                  setProjectsView('details');
-                  setCurrentTab('projects');
-                }}
-                className={`p-5 rounded-3xl border ${colors.card}`}
-              >
-                <View className="flex-row justify-between items-start mb-3">
-                  <View className="flex-1 pr-2">
-                    <Text className={`${colors.textMuted} text-xs font-bold uppercase`}>Primary Investment Project</Text>
-                    <Text className={`${colors.text} text-lg font-bold mt-1`}>{selectedProject.name}</Text>
-                    <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {selectedProject.location}</Text>
-                  </View>
-                  <View className="bg-primary-500/10 border border-primary-500/20 px-2.5 py-0.5 rounded">
-                    <Text className="text-primary-500 text-xs font-bold">{selectedProject.progress}% Done</Text>
-                  </View>
-                </View>
-                
-                <View className="h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-4">
-                  <View className="h-full bg-primary-500" style={{ width: `${selectedProject.progress}%` }} />
-                </View>
+            {/* Stats grid */}
+            <View className="flex-row gap-4">
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[11px] font-bold`}>Active project</Text>
+                <Text className={`${colors.text} text-2xl font-extrabold mt-2`}>{allClientProjects.length}</Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-1`}>+ this month</Text>
+              </View>
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[11px] font-bold`}>Total Budget</Text>
+                <Text className={`${colors.text} text-2xl font-extrabold mt-2`}>
+                  {allClientProjects.reduce((sum, p) => sum + (p.budget || 0), 0).toLocaleString()}
+                </Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-1`}>Managed</Text>
+              </View>
+            </View>
 
-                {/* Info desk */}
-                <View className="bg-slate-100 dark:bg-slate-900/60 p-3.5 rounded-2xl flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2.5">
-                    <Text className="text-lg">👷‍♂️</Text>
-                    <View>
-                      <Text className={`${colors.textMuted} text-[10px] font-bold uppercase`}>Contracted Builder</Text>
-                      <Text className={`${colors.text} text-xs font-bold`}>{selectedProject.engineer}</Text>
-                    </View>
-                  </View>
-                  <Text className="text-primary-500 text-xs font-extrabold">Tap to Manage ➔</Text>
-                </View>
+            <View className="flex-row gap-4">
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[11px] font-bold`}>Pending Milestones</Text>
+                <Text className={`${colors.text} text-2xl font-extrabold mt-2`}>
+                  {milestones.filter((m: any) => m.status === 'PENDING').length}
+                </Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-1`}>in review</Text>
+              </View>
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[11px] font-bold`}>Completion Rate</Text>
+                <Text className={`${colors.text} text-2xl font-extrabold mt-2`}>{selectedProject?.progress ?? 0}%</Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-1`}>Above average</Text>
+              </View>
+            </View>
+
+            {/* Latest project */}
+            <View className="pt-2">
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-[#007E6E] text-base font-extrabold tracking-wider">LATEST PROJECT</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowAddProjectModal(true);
+                  }}
+                  className="bg-[#007E6E] px-4 py-2 rounded-lg flex-row items-center"
+                >
+                  <Text className="text-white font-bold text-sm">+ </Text>
+                  <Text className="text-white font-bold text-sm">Project</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setCurrentTab('projects');
+                  setProjectsView('list');
+                }}
+                className="items-end mb-2"
+              >
+                <Text className="text-blue-500 text-sm">View all</Text>
               </TouchableOpacity>
-            ) : null}
+
+              {addedProjects.length > 0 ? (
+                <View className="space-y-3">
+                  {addedProjects.slice(0, 3).map((proj) => (
+                    <View key={proj.id} className={`rounded-2xl border p-4 ${colors.card}`}>
+                      <View className="flex-row justify-between items-start">
+                        <View className="flex-1 pr-3">
+                          <View className="flex-row items-center mb-2">
+                            <Text className="text-slate-500 text-xl mr-2">🕒</Text>
+                            <Text className={`${colors.text} text-2xl font-bold mr-3`}>
+                              {proj.name}
+                            </Text>
+                            <View className="bg-amber-600 px-3 py-1 rounded-full">
+                              <Text className="text-white text-xs font-semibold">{proj.status}</Text>
+                            </View>
+                          </View>
+                          <Text className={`${colors.textSecondary} text-base mb-1`}>
+                            📍 <Text className="text-[#007E6E] font-semibold">Location</Text> : {proj.location}
+                          </Text>
+                          <Text className={`${colors.textSecondary} text-base`}>
+                            💰 <Text className="text-[#007E6E] font-semibold">Budget</Text> : {proj.budget} Rwf
+                          </Text>
+                        </View>
+                        <View className="w-16 h-16 rounded-full border-[8px] border-slate-300 items-center justify-center">
+                          <Text className={`${colors.text} font-bold text-lg`}>{proj.progress}%</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className={`p-6 rounded-2xl border ${colors.card} items-center justify-center`}>
+                  <Text className={`${colors.textMuted} text-sm`}>No Project created Yet</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
 
@@ -299,12 +462,12 @@ export default function ClientDashboard() {
             {projectsView === 'list' ? (
               <View className="space-y-4">
                 <Text className={`${colors.text} text-lg font-bold mb-1`}>Your Construction Investments</Text>
-                {clientProjects.map((proj, index) => (
+                {allClientProjects.map((proj) => (
                   <TouchableOpacity
-                    key={index}
+                    key={proj.id}
                     onPress={() => {
                       setSelectedProject(proj);
-                      setMilestones(proj.milestones);
+                      setMilestones(proj.milestones || []);
                       setProjectsView('details');
                     }}
                     className={`p-5 rounded-3xl border ${colors.card} space-y-3`}
@@ -313,6 +476,11 @@ export default function ClientDashboard() {
                       <View>
                         <Text className={`${colors.text} font-bold text-base`}>{proj.name}</Text>
                         <Text className={`${colors.textMuted} text-xs mt-0.5`}>📍 {proj.location}</Text>
+                        {proj.planFileName ? (
+                          <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>
+                            📎 Plan: {proj.planFileName}
+                          </Text>
+                        ) : null}
                       </View>
                       <View className="bg-primary-500/10 px-2 py-0.5 rounded border border-primary-500/20">
                         <Text className="text-primary-500 text-xs font-bold">{proj.progress}%</Text>
@@ -325,7 +493,9 @@ export default function ClientDashboard() {
 
                     <View className="flex-row justify-between items-center text-xs pt-1">
                       <Text className={colors.textMuted}>Budget: {proj.budget.toLocaleString()} RWF</Text>
-                      <Text className="text-primary-500 font-bold text-xs">View Details ➔</Text>
+                      <Text className="text-primary-500 font-bold text-xs">
+                        {proj.statusLabel ? `${proj.statusLabel} • ` : ''}View Details ➔
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -547,46 +717,20 @@ export default function ClientDashboard() {
             </View>
 
             {/* Verification admin controller */}
-            <View className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-3xl space-y-3">
-              <Text className="text-blue-500 font-bold text-sm">🛠 Admin & KYC Simulation Desk</Text>
-              <Text className="text-slate-500 text-[11px] leading-4">
-                Instantly toggle the KYC verification status of your client account to test how the screen routing gates behave:
-              </Text>
-              
-              <View className="flex-row flex-wrap gap-2 pt-1">
-                {(['PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const).map(status => (
-                  <TouchableOpacity
-                    key={status}
-                    onPress={() => updateUserProfile({ kycStatus: status })}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-                      user?.kycStatus === status 
-                        ? 'bg-blue-500 border-blue-600 text-white' 
-                        : 'bg-white border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <Text className={user?.kycStatus === status ? 'text-white text-[11px] font-bold' : 'text-slate-700 text-[11px]'}>
-                      {status}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text className="text-slate-500 font-semibold text-[11px] pt-3">Seeded Mock Users Reference:</Text>
-              <View className="bg-slate-200/50 p-2.5 rounded-xl space-y-1">
-                {mockUsers.map(u => (
-                  <Text key={u.id} className="text-[10px] text-slate-700 font-mono">
-                    • {u.role}: <Text className="font-bold">{u.email}</Text> | {u.password} ({u.name})
-                  </Text>
-                ))}
-              </View>
-            </View>
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl items-center"
+            >
+              <Text className="text-red-500 font-bold text-sm">Logout</Text>
+            </TouchableOpacity>
           </View>
         )}
 
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+      <View className="absolute bottom-4 left-0 right-0">
+        <View className="mx-6 bg-[#007E6E] rounded-full flex-row justify-around items-center h-16 shadow-lg">
         <TabButton
           label="Dash"
           iconName="home-outline"
@@ -594,6 +738,8 @@ export default function ClientDashboard() {
           isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="Builds"
@@ -602,6 +748,8 @@ export default function ClientDashboard() {
           isActive={currentTab === 'projects'}
           onPress={() => setCurrentTab('projects')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="Vault"
@@ -610,6 +758,8 @@ export default function ClientDashboard() {
           isActive={currentTab === 'escrow'}
           onPress={() => setCurrentTab('escrow')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="Chat"
@@ -618,6 +768,8 @@ export default function ClientDashboard() {
           isActive={currentTab === 'messages'}
           onPress={() => setCurrentTab('messages')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="User"
@@ -626,8 +778,126 @@ export default function ClientDashboard() {
           isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
+        </View>
       </View>
+
+      {/* Add Project Modal */}
+      <Modal
+        visible={showAddProjectModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddProjectModal(false)}
+      >
+        <View className="flex-1 bg-black/35 justify-center px-4">
+          <View className={`rounded-3xl p-5 border ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-[#007E6E] text-4xl font-extrabold tracking-wide">ADD PROJECT FORM</Text>
+              <TouchableOpacity onPress={() => setShowAddProjectModal(false)}>
+                <Text className={`${colors.text} text-4xl`}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View className="h-[1px] bg-[#007E6E] mb-4" />
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Project Name</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <Text className="text-slate-400 text-xl mr-3">📦</Text>
+                <TextInput
+                  value={newProjectName}
+                  onChangeText={setNewProjectName}
+                  placeholder="Enter Project"
+                  placeholderTextColor="#9ca3af"
+                  className={`flex-1 text-lg ${colors.text}`}
+                />
+              </View>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Location</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <Text className="text-slate-400 text-xl mr-3">📍</Text>
+                <TextInput
+                  value={newProjectLocation}
+                  onChangeText={setNewProjectLocation}
+                  placeholder="Project location"
+                  placeholderTextColor="#9ca3af"
+                  className={`flex-1 text-lg ${colors.text}`}
+                />
+              </View>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Start Date</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <TextInput
+                  value={newProjectStartDate}
+                  onChangeText={setNewProjectStartDate}
+                  placeholder="Starting Date"
+                  placeholderTextColor="#9ca3af"
+                  className={`flex-1 text-lg text-center ${colors.text}`}
+                />
+                <Text className="text-slate-400 text-2xl ml-3">📅</Text>
+              </View>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Due Date</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <TextInput
+                  value={newProjectDueDate}
+                  onChangeText={setNewProjectDueDate}
+                  placeholder="Project Deadline"
+                  placeholderTextColor="#9ca3af"
+                  className={`flex-1 text-lg text-center ${colors.text}`}
+                />
+                <Text className="text-slate-400 text-2xl ml-3">📅</Text>
+              </View>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Lead Engineer</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <Text className="text-slate-400 text-xl mr-3">👤</Text>
+                <TextInput
+                  value={newProjectLeadEngineer}
+                  onChangeText={setNewProjectLeadEngineer}
+                  placeholder="Select Engineer"
+                  placeholderTextColor="#9ca3af"
+                  className={`flex-1 text-lg ${colors.text}`}
+                />
+                <Text className="text-slate-500 text-xl ml-2">⌄</Text>
+              </View>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Project Plan File</Text>
+              <TouchableOpacity
+                onPress={handlePickProjectPlan}
+                className={`border rounded-xl px-4 py-3 mb-3 flex-row items-center ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}
+              >
+                <Text className="text-slate-400 text-xl mr-3">📎</Text>
+                <Text className={`${projectPlanFileName ? colors.text : 'text-slate-400'} text-base flex-1`}>
+                  {projectPlanFileName || 'Upload project plan (any file type)'}
+                </Text>
+                <Text className="text-[#007E6E] text-xs font-bold">Browse</Text>
+              </TouchableOpacity>
+
+              <Text className={`${colors.textSecondary} text-lg mb-2`}>Project Description</Text>
+              <View className={`border rounded-xl px-4 py-3 mb-4 ${isDark ? 'border-slate-700 bg-slate-950' : 'border-slate-300 bg-white'}`}>
+                <TextInput
+                  value={newProjectDescription}
+                  onChangeText={setNewProjectDescription}
+                  placeholder="Describe project scope and objectives"
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  textAlignVertical="top"
+                  className={`min-h-28 text-lg ${colors.text}`}
+                />
+              </View>
+
+              <TouchableOpacity
+                onPress={handleAddProject}
+                className="bg-[#007E6E] py-4 rounded-2xl items-center mb-1"
+              >
+                <Text className="text-white text-4xl font-extrabold tracking-wide">ADD PROJECT</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Widget 3: Low-Level Drill-Down Milestone Inspection Details Modal */}
       <Modal
