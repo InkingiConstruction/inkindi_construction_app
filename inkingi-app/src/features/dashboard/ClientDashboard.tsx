@@ -60,7 +60,7 @@ export default function ClientDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Temp holder for budget checking during project creation
-  const [pendingProjectData, setPendingProjectData] = useState<{name: string, location: string, budget: number, engineerId: string} | null>(null);
+  const [pendingProjectData, setPendingProjectData] = useState<any | null>(null);
 
   const isDark = dashboard.theme === 'dark';
   const colors = getColors(isDark);
@@ -143,47 +143,120 @@ export default function ClientDashboard() {
     Alert.alert('Dispute Logged', 'Our supervisors will review this milestone shortly.');
   };
 
-  const handleCreateProject = (name: string, location: string, budget: number, engineerId: string) => {
-    const engineer = dashboard.allEngineers.find((e: any) => e.id === engineerId);
+const handleCreateProject = async (projectData: any) => {
+  const {
+    name,
+    description,
+    category,
+    startDate,
+    endDate,
+    budget,
+    currency,
+    location,
+    gpsBoundary,
+    sitePhotos,
+    architecturalPlans,
+    engineerId,
+  } = projectData;
 
-    if (walletBalance < budget) {
-      setPendingProjectData({ name, location, budget, engineerId });
-      setShowCreateProjModal(false);
-      setShowProjectWarning(true);
-      return;
-    }
+  const engineer = dashboard.allEngineers.find(
+    (e: any) => e.id === engineerId
+  );
 
-    setWalletBalance((prev: number) => prev - budget);
-    const newProj = {
-      id: `proj-${Date.now().toString().slice(-4)}`,
-      name, location, budget,
-      client: dashboard.user?.name || 'Grace Uwase',
-      supervisor: 'Aline Mukamana',
-      progress: 0,
-      status: 'ACTIVE',
-      milestones: [
-        { title: 'Foundation & Excavation', pct: 30, status: 'PENDING' },
-        { title: 'Frame & Structural Slab', pct: 40, status: 'PENDING' },
-        { title: 'Finishes, Plumbing & Handover', pct: 30, status: 'PENDING' }
-      ],
-      documents: [
-        { name: 'Contract_Deed.pdf', uploadedAt: new Date().toISOString().split('T')[0], size: '1.4 MB' }
-      ]
-    };
-
-    setLocalProjects((prev: any[]) => [newProj, ...prev]);
-    setSelectedProjId(newProj.id);
+  // CHECK WALLET
+  if (walletBalance < budget) {
+    setPendingProjectData(projectData);
     setShowCreateProjModal(false);
+    setShowProjectWarning(true);
+    return;
+  }
 
-    addNotification({
-      type: 'milestone',
-      title: 'Contract Active 🏗️',
-      body: `Locked ${budget.toLocaleString()} RWF into escrow with ${engineer?.name}.`,
-      time: 'Just now',
-      read: false,
-    });
-    Alert.alert('Success', 'Project created and full budget locked securely in escrow.');
+  // DEDUCT WALLET
+  setWalletBalance((prev: number) => prev - budget);
+
+  // CREATE PROJECT
+  const newProj = {
+    id: `proj-${Date.now()}`,
+    name,
+    description,
+    category,
+    startDate,
+    endDate,
+    currency,
+    budget,
+    location,
+
+    gpsBoundary,
+
+    sitePhotos,
+    architecturalPlans,
+
+    engineerId,
+
+    client: dashboard.user?.name || 'Grace Uwase',
+
+    supervisor: engineer?.name || 'Assigned Supervisor',
+
+    progress: 0,
+
+    status: 'DRAFT',
+
+    createdAt: new Date().toISOString(),
+
+    milestones: [
+      {
+        title: 'Foundation & Excavation',
+        pct: 30,
+        status: 'PENDING',
+      },
+      {
+        title: 'Structural Works',
+        pct: 40,
+        status: 'PENDING',
+      },
+      {
+        title: 'Finishing & Handover',
+        pct: 30,
+        status: 'PENDING',
+      },
+    ],
+
+    documents: [
+      ...sitePhotos.map((p: any) => ({
+        type: 'PHOTO',
+        url: p.url,
+        uploadedAt: new Date().toISOString(),
+      })),
+
+      ...architecturalPlans.map((p: any) => ({
+        type: 'PLAN',
+        url: p.url,
+        uploadedAt: new Date().toISOString(),
+      })),
+    ],
   };
+
+  // SAVE LOCALLY
+  setLocalProjects((prev: any[]) => [newProj, ...prev]);
+
+  setSelectedProjId(newProj.id);
+
+  setShowCreateProjModal(false);
+
+  // NOTIFICATION
+  addNotification({
+    type: 'milestone',
+    title: 'Project Created 🏗️',
+    body: `${name} created successfully with locked escrow.`,
+    time: 'Just now',
+    read: false,
+  });
+
+  Alert.alert(
+    'Project Created',
+    'Your project has been created successfully and saved as draft.'
+  );
+};
 
   const handleFlutterwaveFund = () => {
     if (!fundAmount || parseInt(fundAmount) < 10000) {
@@ -212,12 +285,7 @@ export default function ClientDashboard() {
             {
               text: 'OK',
               onPress: () => {
-                handleCreateProject(
-                  pendingProjectData.name,
-                  pendingProjectData.location,
-                  pendingProjectData.budget,
-                  pendingProjectData.engineerId
-                );
+               handleCreateProject(pendingProjectData);
                 setPendingProjectData(null);
               }
             }
@@ -380,13 +448,13 @@ export default function ClientDashboard() {
       </View>
 
       {/* Modals */}
-      <CreateProjectModal
-        visible={showCreateProjModal}
-        engineers={dashboard.allEngineers}
-        colors={colors}
-        onClose={() => setShowCreateProjModal(false)}
-        onSubmit={handleCreateProject}
-      />
+     <CreateProjectModal
+  visible={showCreateProjModal}
+  engineers={dashboard.allEngineers}
+  colors={colors}
+  onClose={() => setShowCreateProjModal(false)}
+  onSubmit={handleCreateProject}
+/>
       <WalletGateModal
         visible={showProjectWarning}
         colors={colors}
