@@ -414,7 +414,7 @@ const handleLogout = async () => {
               <HomeIcon size={44} color="#007E6E" />
             </View>
             <Text className="text-[#007E6E] text-2xl font-extrabold text-center">Hi, WELCOME BACK</Text>
-            <Text className={`${colors.textMuted} mt-1 text-sm text-center`}>Sign in to your account</Text>
+            <Text className={`${colors.textMuted} mt-1 text-sm text-center`}>Sign in to contiue</Text>
           </View>
 
           {errorMsg ? (
