@@ -194,13 +194,13 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
           ...found,
           role: 'CLIENT',
           kycStatus: 'APPROVED',
-          status: 'APPROVED',
+          status: 'ACTIVE',
         }
       : fallbackClient
         ? {
             ...fallbackClient,
             kycStatus: 'APPROVED',
-            status: 'APPROVED',
+            status: 'ACTIVE',
           }
         : {
             id: `usr-client-bypass-${Date.now().toString().slice(-4)}`,
@@ -209,7 +209,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
             username: (loginEmail || 'client').split('@')[0],
             phone: '0780000000',
             role: 'CLIENT',
-            status: 'APPROVED',
+            status: 'ACTIVE',
             kycStatus: 'APPROVED',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

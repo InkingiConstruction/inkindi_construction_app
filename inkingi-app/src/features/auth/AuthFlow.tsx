@@ -18,6 +18,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ImageBackground,
+  TextInput,
+  Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -33,6 +35,62 @@ import { OtpInput } from '@/components/ui/OtpInput';
 import { simulateExternalRegistryCheck } from '@/data/mockAdminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HomeIcon } from 'lucide-react-native';
+
+// ─── Theme tokens ────────────────────────────────────────────────────────────
+
+const LIGHT = {
+  bg:             '#FFFFFF',
+  bgSurface:      '#F8FAFC',
+  bgCard:         '#FFFFFF',
+  border:         '#E2E8F0',
+  text:           '#0F172A',
+  textSub:        '#475569',
+  textMuted:      '#94A3B8',
+  accent:         '#10B981',
+  accentLight:    'rgba(16,185,129,0.10)',
+  accentBorder:   'rgba(16,185,129,0.25)',
+  danger:         '#EF4444',
+  dangerLight:    'rgba(239,68,68,0.08)',
+  dangerBorder:   'rgba(239,68,68,0.20)',
+  inputBg:        '#F8FAFC',
+  switchTrack:    '#CBD5E1',
+  shadow:         'rgba(15,23,42,0.06)',
+};
+
+const DARK = {
+  bg:             '#0F172A',
+  bgSurface:      '#1E293B',
+  bgCard:         '#1E293B',
+  border:         '#334155',
+  text:           '#F8FAFC',
+  textSub:        '#CBD5E1',
+  textMuted:      '#64748B',
+  accent:         '#10B981',
+  accentLight:    'rgba(16,185,129,0.12)',
+  accentBorder:   'rgba(16,185,129,0.25)',
+  danger:         '#F87171',
+  dangerLight:    'rgba(239,68,68,0.10)',
+  dangerBorder:   'rgba(239,68,68,0.22)',
+  inputBg:        '#0F172A',
+  switchTrack:    '#334155',
+  shadow:         'rgba(0,0,0,0.30)',
+};
+
+// ─── Masking Helpers ─────────────────────────────────────────────────────────
+
+const maskEmailAddress = (emailStr: string) => {
+  if (!emailStr) return '';
+  const [name, domain] = emailStr.split('@');
+  if (!domain) return emailStr;
+  if (name.length <= 2) return `${name[0]}*@${domain}`;
+  return `${name.slice(0, 2)}****@${domain}`;
+};
+
+const maskPhoneNumber = (phoneStr: string) => {
+  if (!phoneStr) return '';
+  if (phoneStr.length <= 4) return phoneStr;
+  return `${phoneStr.slice(0, 4)}****${phoneStr.slice(-3)}`;
+};
 
 export default function AuthFlow() {
   const insets = useSafeAreaInsets();
@@ -53,11 +111,22 @@ export default function AuthFlow() {
     handleUploadKYC,
     handleAdminSimulateDecision,
     theme,
+    mockUsers,
+    toggleTheme,
   } = useAuth();
 
   // Use light theme as default; fallback if theme is undefined
   const isDark = theme === 'dark';
   const C = isDark ? DARK : LIGHT;
+
+  const colors = {
+    bg: isDark ? 'bg-slate-900' : 'bg-slate-50',
+    card: isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm',
+    text: isDark ? 'text-white' : 'text-slate-900',
+    textSecondary: isDark ? 'text-slate-300' : 'text-slate-600',
+    textMuted: isDark ? 'text-slate-400' : 'text-slate-500',
+    input: isDark ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-100 border-slate-200 text-slate-900',
+  };
 
   const [loading, setLoading]           = useState(false);
   const [errorMsg, setErrorMsg]         = useState('');
@@ -123,6 +192,22 @@ export default function AuthFlow() {
     }
   };
 
+  const handleOtpKeyPress = (e: any, idx: number) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      const newDigits = [...otpDigits];
+      if (!otpDigits[idx] && idx > 0) {
+        newDigits[idx - 1] = '';
+        setOtpDigits(newDigits);
+        setOtpVal(newDigits.join(''));
+        pinRefs[idx - 1].current?.focus();
+      } else {
+        newDigits[idx] = '';
+        setOtpDigits(newDigits);
+        setOtpVal(newDigits.join(''));
+      }
+    }
+  };
+
   const handleLogout = async () => {
     setLoading(true);
     try {
@@ -152,7 +237,7 @@ export default function AuthFlow() {
     try {
       await handleRegister(fullName, regEmail, regPhone, password);
       setFullName(''); setRegEmail(''); setRegPhone('');
-      setPassword(''); setConfirmPassword(''); setOtpCode('');
+      setPassword(''); setConfirmPassword(''); setOtpVal('');
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed.');
     } finally { setLoading(false); }
@@ -175,7 +260,7 @@ export default function AuthFlow() {
 
   const submitEmailOTP = async () => {
     setErrorMsg('');
-    if (otpCode.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
+    if (otpVal.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
     setLoading(true);
     try {
       const match = await handleVerifyEmail(otpVal);
@@ -194,7 +279,7 @@ export default function AuthFlow() {
 
   const submitPhoneOTP = async () => {
     setErrorMsg('');
-    if (otpCode.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
+    if (otpVal.length !== 6) { setErrorMsg('Enter the 6-digit code.'); return; }
     setLoading(true);
     try {
       const match = await handleVerifyPhone(otpVal);
@@ -1083,8 +1168,7 @@ export default function AuthFlow() {
           >
             <Text style={{ color: C.textSub, fontSize: 14, fontWeight: '600' }}>Log out & check later</Text>
           </TouchableOpacity>
-        </View>
-      </ScreenBase>
+      </View>
     );
   }
 
