@@ -24,8 +24,16 @@ import {
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import TabButton from '../../components/ui/TabButton';
 import LottieAnimation from '../../components/ui/LottieAnimation';
+import DashboardShell, { TabDef } from './shared/DashboardShell';
+
+const SUPPLIER_TABS: TabDef[] = [
+  { key: 'dashboard',  label: 'Home',     icon: 'home-outline',  activeIcon: 'home' },
+  { key: 'rfqs',       label: 'RFQs',     icon: 'list-outline',  activeIcon: 'list' },
+  { key: 'deliveries', label: 'Orders',   icon: 'cube-outline',  activeIcon: 'cube' },
+  { key: 'earnings',   label: 'Earnings', icon: 'cash-outline',  activeIcon: 'cash' },
+  { key: 'profile',    label: 'Profile',  icon: 'person-outline', activeIcon: 'person' },
+];
 
 export default function SupplierDashboard() {
   const { 
@@ -39,7 +47,7 @@ export default function SupplierDashboard() {
   } = useAuth();
   
   // Custom Bottom Tabs Navigation State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'rfqs' | 'deliveries' | 'profile'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'rfqs' | 'deliveries' | 'earnings' | 'profile'>('dashboard');
 
   // Theme support
   const isDark = theme === 'dark';
@@ -102,38 +110,18 @@ export default function SupplierDashboard() {
   };
 
   return (
-    <View className={`flex-1 ${colors.bg}`}>
-      
-      {/* Dynamic Header */}
-      <View className={`px-6 pt-14 pb-4 flex-row justify-between items-center ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
-        <View className="flex-row items-center gap-3">
-          {user?.profilePic ? (
-            <Image 
-              source={{ uri: user.profilePic }} 
-              className="w-10 h-10 rounded-full border border-emerald-500" 
-            />
-          ) : (
-            <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-base">{(user?.name || 'U').charAt(0)}</Text>
-            </View>
-          )}
-          <View>
-            <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Supplier Operations</Text>
-            <Text className={`${colors.text} text-base font-bold`}>{user?.name}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          onPress={handleLogout}
-          className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg"
-        >
-          <Text className="text-red-500 text-xs font-bold">Logout</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Scroll View Area */}
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 100 }} 
+    <DashboardShell
+      user={user}
+      roleLabel="Supplier Operations"
+      isDark={isDark}
+      colors={colors}
+      tabs={SUPPLIER_TABS}
+      activeTab={currentTab}
+      onTabChange={(k) => setCurrentTab(k as typeof currentTab)}
+      onLogout={handleLogout}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 20 }}
         className="flex-1 px-5 pt-4"
         showsVerticalScrollIndicator={false}
       >
@@ -288,6 +276,44 @@ export default function SupplierDashboard() {
           </View>
         )}
 
+        {/* ================= TAB: EARNINGS ================= */}
+        {currentTab === 'earnings' && (
+          <View className="space-y-4">
+            <Text className={`${colors.text} text-lg font-bold mb-2`}>Earnings & Payouts</Text>
+            <View className="flex-row gap-3">
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[9px] font-bold uppercase`}>Total Revenue</Text>
+                <Text className={`${colors.text} text-xl font-black mt-1`}>9,250,000</Text>
+                <Text className={`${colors.textMuted} text-[9px] mt-0.5`}>RWF</Text>
+              </View>
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[9px] font-bold uppercase`}>Awaiting</Text>
+                <Text className={`${colors.text} text-xl font-black mt-1`}>2,220,000</Text>
+                <Text className={`${colors.textMuted} text-[9px] mt-0.5`}>RWF</Text>
+              </View>
+            </View>
+            {[
+              { item: 'Pre-Painted G28 Roofing Sheets', project: 'Musanze Rental Units', amount: '2,220,000 RWF', status: 'PENDING', date: 'Awaiting GPS confirm' },
+              { item: 'T12 Steel Rebars (4.5 Tons)', project: 'Kicukiro Family Home', amount: '5,400,000 RWF', status: 'PAID', date: '2026-05-12' },
+              { item: 'Kigali Cement Bags (650 pcs)', project: 'Kicukiro Family Home', amount: '3,850,000 RWF', status: 'PAID', date: '2026-05-08' },
+            ].map((e, i) => (
+              <View key={i} className={`p-4 rounded-2xl border ${colors.card}`}>
+                <View className="flex-row justify-between items-start mb-1">
+                  <View className="flex-1 pr-2">
+                    <Text className={`${colors.text} font-bold text-xs`}>{e.item}</Text>
+                    <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>{e.project}</Text>
+                  </View>
+                  <View style={{ backgroundColor: e.status === 'PAID' ? '#10b98120' : '#f59e0b20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <Text style={{ color: e.status === 'PAID' ? '#10b981' : '#f59e0b', fontSize: 9, fontWeight: '700' }}>{e.status}</Text>
+                  </View>
+                </View>
+                <Text className={`${colors.text} font-bold text-sm mt-1`}>{e.amount}</Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>{e.date}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* ================= TAB: PROFILE ================= */}
         {currentTab === 'profile' && (
           <View className="space-y-4">
@@ -333,52 +359,6 @@ export default function SupplierDashboard() {
         )}
 
       </ScrollView>
-
-      {/* iOS style custom bottom navigation */}
-      <View className="absolute bottom-4 left-0 right-0">
-        <View className="mx-6 bg-[#007E6E] rounded-full flex-row justify-around items-center h-16 shadow-lg">
-        <TabButton
-          label="Dash"
-          iconName="home-outline"
-          activeIconName="home"
-          isActive={currentTab === 'dashboard'}
-          onPress={() => setCurrentTab('dashboard')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="RFQs"
-          iconName="list-outline"
-          activeIconName="list"
-          isActive={currentTab === 'rfqs'}
-          onPress={() => setCurrentTab('rfqs')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="Orders"
-          iconName="cube-outline"
-          activeIconName="cube"
-          isActive={currentTab === 'deliveries'}
-          onPress={() => setCurrentTab('deliveries')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="User"
-          iconName="person-outline"
-          activeIconName="person"
-          isActive={currentTab === 'profile'}
-          onPress={() => setCurrentTab('profile')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        </View>
-      </View>
-    </View>
+    </DashboardShell>
   );
 }

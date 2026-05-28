@@ -54,7 +54,7 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
     phone: "+33612004001",
     role: "CLIENT",
     status: "ACTIVE",
-    kycStatus: "PENDING",
+    kycStatus: "APPROVED",
     createdAt: "2026-05-10T09:15:00.000Z",
     updatedAt: "2026-05-23T12:30:00.000Z",
     password: "password123",
@@ -164,28 +164,7 @@ export const INITIAL_MOCK_USERS: MockUser[] = [
   },
 
   // ── DEV TEST CREDENTIALS (matches TEST_CREDENTIALS.txt) ──────────────────
-  {
-    id: "usr-test-client-001",
-    name: "Grace Uwase",
-    email: "grace.uwase@test.com",
-    username: "grace_uwase_test",
-    phone: "+250788100001",
-    role: "CLIENT",
-    status: "ACTIVE",
-    kycStatus: "APPROVED",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    password: "password123",
-    profilePic: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=80",
-    jwtToken: "mock-token-grace-test",
-    sessionSample: {
-      sessionId: "sess-grace-test-001",
-      deviceName: "Android Device",
-      ipAddress: "197.243.1.10",
-      location: "Kigali, Rwanda",
-      loginTime: new Date().toISOString()
-    }
-  },
+  // CLIENT  → grace.uwase@example.com  / password123  (usr-client-001 above)
   {
     id: "usr-test-engineer-001",
     name: "Patrick Nkurunziza",

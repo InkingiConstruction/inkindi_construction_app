@@ -24,8 +24,15 @@ import {
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import TabButton from '../../components/ui/TabButton';
 import LottieAnimation from '../../components/ui/LottieAnimation';
+import DashboardShell, { TabDef } from './shared/DashboardShell';
+
+const SUPERVISOR_TABS: TabDef[] = [
+  { key: 'dashboard',   label: 'Home',     icon: 'home-outline',             activeIcon: 'home' },
+  { key: 'inspections', label: 'Inspect',  icon: 'checkmark-circle-outline', activeIcon: 'checkmark-circle' },
+  { key: 'reports',     label: 'Reports',  icon: 'clipboard-outline',        activeIcon: 'clipboard' },
+  { key: 'profile',     label: 'Profile',  icon: 'person-outline',           activeIcon: 'person' },
+];
 
 export default function SupervisorDashboard() {
   const { 
@@ -39,7 +46,7 @@ export default function SupervisorDashboard() {
   } = useAuth();
   
   // Custom Bottom Tabs Navigation State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'inspections' | 'projects' | 'profile'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'inspections' | 'reports' | 'profile'>('dashboard');
 
   // Theme support
   const isDark = theme === 'dark';
@@ -117,38 +124,18 @@ export default function SupervisorDashboard() {
   };
 
   return (
-    <View className={`flex-1 ${colors.bg}`}>
-      
-      {/* Dynamic Header */}
-      <View className={`px-6 pt-14 pb-4 flex-row justify-between items-center ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
-        <View className="flex-row items-center gap-3">
-          {user?.profilePic ? (
-            <Image 
-              source={{ uri: user.profilePic }} 
-              className="w-10 h-10 rounded-full border border-emerald-500" 
-            />
-          ) : (
-            <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-base">{(user?.name || 'U').charAt(0)}</Text>
-            </View>
-          )}
-          <View>
-            <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Supervisor Desk</Text>
-            <Text className={`${colors.text} text-base font-bold`}>{user?.name}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          onPress={handleLogout}
-          className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg"
-        >
-          <Text className="text-red-500 text-xs font-bold">Logout</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Scroll View Area */}
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 100 }} 
+    <DashboardShell
+      user={user}
+      roleLabel="Supervisor Desk"
+      isDark={isDark}
+      colors={colors}
+      tabs={SUPERVISOR_TABS}
+      activeTab={currentTab}
+      onTabChange={(k) => setCurrentTab(k as typeof currentTab)}
+      onLogout={handleLogout}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 20 }}
         className="flex-1 px-5 pt-4"
         showsVerticalScrollIndicator={false}
       >
@@ -281,13 +268,13 @@ export default function SupervisorDashboard() {
           </View>
         )}
 
-        {/* ================= TAB: PROJECTS ================= */}
-        {currentTab === 'projects' && (
+        {/* ================= TAB: REPORTS ================= */}
+        {currentTab === 'reports' && (
           <View className="space-y-4">
-            <Text className={`${colors.text} text-lg font-bold mb-2`}>Assigned Inspection Sites</Text>
+            <Text className={`${colors.text} text-lg font-bold mb-2`}>Site Reports</Text>
             {projects.map((proj, idx) => (
-              <View 
-                key={idx} 
+              <View
+                key={idx}
                 className={`p-4 rounded-2xl border ${colors.card}`}
               >
                 <View className="flex-row justify-between items-start mb-2">
@@ -300,6 +287,9 @@ export default function SupervisorDashboard() {
                   </View>
                 </View>
                 <Text className={`${colors.textMuted} text-[11px] mt-1`}>Engineer: {proj.engineer} | Client: {proj.client}</Text>
+                <View style={{ height: 4, backgroundColor: isDark ? '#334155' : '#e2e8f0', borderRadius: 4, marginTop: 8, overflow: 'hidden' }}>
+                  <View style={{ height: 4, backgroundColor: '#007E6E', width: `${proj.progress}%`, borderRadius: 4 }} />
+                </View>
               </View>
             ))}
           </View>
@@ -350,52 +340,6 @@ export default function SupervisorDashboard() {
         )}
 
       </ScrollView>
-
-      {/* iOS style custom bottom navigation */}
-      <View className="absolute bottom-4 left-0 right-0">
-        <View className="mx-6 bg-[#007E6E] rounded-full flex-row justify-around items-center h-16 shadow-lg">
-        <TabButton
-          label="Dash"
-          iconName="home-outline"
-          activeIconName="home"
-          isActive={currentTab === 'dashboard'}
-          onPress={() => setCurrentTab('dashboard')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="Inspect"
-          iconName="checkmark-circle-outline"
-          activeIconName="checkmark-circle"
-          isActive={currentTab === 'inspections'}
-          onPress={() => setCurrentTab('inspections')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="Sites"
-          iconName="map-outline"
-          activeIconName="map"
-          isActive={currentTab === 'projects'}
-          onPress={() => setCurrentTab('projects')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="User"
-          iconName="person-outline"
-          activeIconName="person"
-          isActive={currentTab === 'profile'}
-          onPress={() => setCurrentTab('profile')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        </View>
-      </View>
-    </View>
+    </DashboardShell>
   );
 }
