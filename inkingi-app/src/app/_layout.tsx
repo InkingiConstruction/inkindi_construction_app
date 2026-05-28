@@ -57,9 +57,9 @@ function AppContent() {
     return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />;
   }
 
-  if (!isLoggedIn) {
-    return <AuthFlow />;
-  }
+  // if (!isLoggedIn) {
+  //   return <AuthFlow />;
+  // }
 
   return <HomeScreen />;
 }
