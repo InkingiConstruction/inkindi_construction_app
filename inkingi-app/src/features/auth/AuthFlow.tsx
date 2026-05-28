@@ -32,6 +32,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { OtpInput } from '@/components/ui/OtpInput';
 import { simulateExternalRegistryCheck } from '@/data/mockAdminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { HomeIcon } from 'lucide-react-native';
 
 // ─── Theme tokens ────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ export default function AuthFlow() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await AsyncStorage.removeMany(['token', 'user', 'refreshToken']);
+      await AsyncStorage.multiRemove(['token', 'user', 'refreshToken']);
       setStep('landing');
       setRole(null);
     } catch {
@@ -319,124 +320,58 @@ export default function AuthFlow() {
   if (step === 'landing') {
     return (
       <ImageBackground
-        source={require('@/assets/inkingi-banner.jpg')}
-        style={{ flex: 1 }}
-        imageStyle={{ opacity: 1 }}
-      >
-        {/* Uniform semi-transparent overlay over entire image */}
-        <View style={{
-          ...{ flex: 1 },
-          backgroundColor: 'rgba(0,0,0,0.52)',
-        }}>
-          <StatusBar style="light" />
-          <SafeAreaView style={{ flex: 1 }}>
-            <View style={{
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              paddingHorizontal: 24,
-              paddingBottom: insets.bottom + 20,
-            }}>
+      source={require('../../../assets/inkingi-banner.jpg')}
+      className="flex-1"
+    >
+      {/* Dark overlay with centered content layout */}
+      <View className="flex-1 bg-black/60 justify-between items-center px-8 pt-24 pb-16">
+        
+        {/* Top/Middle Content Section */}
+        <View className="items-center flex-1 justify-center max-w-xs">
+          {/* Logo Icon Placeholder */}
+          <View className="mb-4">
+            <HomeIcon size={44} color="#34D399" />
+          </View>
 
-              {/* ── Logo ── */}
-              <View style={{
-                width: 72, height: 72,
-                backgroundColor: '#10B981',
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 20,
-                shadowColor: '#10B981',
-                shadowOffset: { width: 0, height: 6 },
-                shadowOpacity: 0.35,
-                shadowRadius: 14,
-                elevation: 10,
-              }}>
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 32 }}>I</Text>
-              </View>
+          {/* Heading */}
+          <Text className="text-[#8AF2BB] text-2xl font-bold tracking-widest text-center uppercase">
+            Welcome To
+          </Text>
+          <Text className="text-[#8AF2BB] text-2xl font-bold tracking-widest text-center uppercase mb-6">
+            Inkingi
+          </Text>
 
-              {/* ── Title ── */}
-              <Text style={{
-                color: '#FFFFFF',
-                fontWeight: '800',
-                fontSize: 28,
-                textAlign: 'center',
-                marginBottom: 8,
-                letterSpacing: -0.3,
-              }}>
-                InkingiPro Build
-              </Text>
-
-              <Text style={{
-                color: '#10B981',
-                fontWeight: '600',
-                fontSize: 11,
-                letterSpacing: 2.5,
-                textTransform: 'uppercase',
-                marginBottom: 16,
-              }}>
-                Escrow & Onboarding Vault
-              </Text>
-
-              <Text style={{
-                color: 'rgba(255,255,255,0.65)',
-                fontSize: 14,
-                textAlign: 'center',
-                lineHeight: 21,
-                marginBottom: 40,
-                maxWidth: 300,
-              }}>
-                Secure payments, verified professionals, and transparent procurement for diaspora investors.
-              </Text>
-
-              {/* ── CTAs ── */}
-              <View style={{ width: '100%', maxWidth: 340, gap: 12 }}>
-                <TouchableOpacity
-                  onPress={() => setStep('login')}
-                  activeOpacity={0.85}
-                  style={{
-                    backgroundColor: '#10B981',
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    shadowColor: '#10B981',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 10,
-                    elevation: 6,
-                  }}
-                >
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Sign In</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setStep('register')}
-                  activeOpacity={0.85}
-                  style={{
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    borderWidth: 1.5,
-                    borderColor: 'rgba(255,255,255,0.40)',
-                    backgroundColor: 'rgba(255,255,255,0.08)',
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Create Account</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{
-                color: 'rgba(255,255,255,0.28)',
-                fontSize: 11,
-                marginTop: 28,
-                textAlign: 'center',
-              }}>
-                Trusted by diaspora investors across Rwanda
-              </Text>
-            </View>
-          </SafeAreaView>
+          {/* Subtitle / Description */}
+          <Text className="text-white text-lg text-center leading-6">
+            Bridging trust between Diaspora investors and local construction professionals in Rwanda
+          </Text>
         </View>
-      </ImageBackground>
+
+        {/* Bottom Actions Section */}
+        <View className="w-full space-y-6">
+          {/* Create Account Button */}
+          <TouchableOpacity 
+            className="bg-[#007A64] py-4 rounded-xl items-center shadow-sm"
+            onPress={() => setStep('register')}
+          >
+            <Text className="text-white font-bold text-base tracking-wider uppercase">
+              Create Account
+            </Text>
+          </TouchableOpacity>
+
+          {/* Login Button */}
+          <TouchableOpacity 
+            className="bg-[#B08D49] py-4 rounded-xl items-center shadow-sm mt-4"
+            onPress={() => setStep('login')}
+          >
+            <Text className="text-white font-bold text-base tracking-wider uppercase">
+              Login
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </ImageBackground>
     );
   }
 
