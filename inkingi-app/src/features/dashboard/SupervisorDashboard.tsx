@@ -340,47 +340,20 @@ export default function SupervisorDashboard() {
               </View>
             </View>
 
-            {/* Verification bypass */}
-            <View className="bg-blue-500/5 border border-blue-500/20 p-5 rounded-3xl space-y-3">
-              <Text className="text-blue-500 font-bold text-sm">🛠 Admin & KYC Simulation Desk</Text>
-              <Text className="text-slate-500 text-[11px] leading-4">
-                Instantly toggle the KYC verification status of your supervisor account to test how the screen routing gates behave:
-              </Text>
-              
-              <View className="flex-row flex-wrap gap-2 pt-1">
-                {(['PENDING', 'SUBMITTED', 'APPROVED', 'REJECTED'] as const).map(status => (
-                  <TouchableOpacity
-                    key={status}
-                    onPress={() => updateUserProfile({ kycStatus: status })}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-                      user?.kycStatus === status 
-                        ? 'bg-blue-500 border-blue-600 text-white' 
-                        : 'bg-white border-slate-200 text-slate-700'
-                    }`}
-                  >
-                    <Text className={user?.kycStatus === status ? 'text-white text-[11px] font-bold' : 'text-slate-700 text-[11px]'}>
-                      {status}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <Text className="text-slate-500 font-semibold text-[11px] pt-3">Seeded Mock Users Reference:</Text>
-              <View className="bg-slate-200/50 p-2.5 rounded-xl space-y-1">
-                {mockUsers.map(u => (
-                  <Text key={u.id} className="text-[10px] text-slate-700 font-mono">
-                    • {u.role}: <Text className="font-bold">{u.email}</Text> | {u.password} ({u.name})
-                  </Text>
-                ))}
-              </View>
-            </View>
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl items-center"
+            >
+              <Text className="text-red-500 font-bold text-sm">Logout</Text>
+            </TouchableOpacity>
           </View>
         )}
 
       </ScrollView>
 
       {/* iOS style custom bottom navigation */}
-      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
+      <View className="absolute bottom-4 left-0 right-0">
+        <View className="mx-6 bg-[#007E6E] rounded-full flex-row justify-around items-center h-16 shadow-lg">
         <TabButton
           label="Dash"
           iconName="home-outline"
@@ -388,6 +361,8 @@ export default function SupervisorDashboard() {
           isActive={currentTab === 'dashboard'}
           onPress={() => setCurrentTab('dashboard')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="Inspect"
@@ -396,6 +371,8 @@ export default function SupervisorDashboard() {
           isActive={currentTab === 'inspections'}
           onPress={() => setCurrentTab('inspections')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="Sites"
@@ -404,6 +381,8 @@ export default function SupervisorDashboard() {
           isActive={currentTab === 'projects'}
           onPress={() => setCurrentTab('projects')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
         <TabButton
           label="User"
@@ -412,7 +391,10 @@ export default function SupervisorDashboard() {
           isActive={currentTab === 'profile'}
           onPress={() => setCurrentTab('profile')}
           isDark={isDark}
+          variant="pill"
+          showLabel={false}
         />
+        </View>
       </View>
     </View>
   );

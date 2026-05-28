@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { useColorScheme } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import { 
   useFonts,
@@ -24,11 +24,38 @@ import { AuthContextProvider, useAuth } from '@/contexts/AuthContext';
 import AuthFlow from '@/features/auth/AuthFlow';
 import HomeScreen from './index';
 
+// Allow Expo Router to use its default error boundary implementation.
+export { ErrorBoundary } from 'expo-router';
+
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import OnboardingScreen, { ONBOARDING_KEY } from '@/features/onboarding/OnboardingScreen';
+
 function AppContent() {
   const { isLoggedIn } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const value = await AsyncStorage.getItem(ONBOARDING_KEY);
+        setShowOnboarding(value !== 'true');
+      } catch (e) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, []);
+
+  if (showOnboarding === null) {
+    return null; // Let the splash screen persist or show nothing briefly
+  }
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />;
+  }
 
   if (!isLoggedIn) {
     return <AuthFlow />;
