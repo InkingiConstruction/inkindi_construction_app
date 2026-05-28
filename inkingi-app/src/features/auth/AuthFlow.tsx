@@ -43,6 +43,7 @@ export default function AuthFlow() {
     handleResendOTP,
     handleUploadKYC,
     handleAdminSimulateDecision,
+    handleLogout: logoutFromBackend,
     mockUsers,
     theme,
     toggleTheme
@@ -96,7 +97,7 @@ export default function AuthFlow() {
     setCooldown(30);
     setOtpDigits(['', '', '', '', '', '']);
     setOtpVal('');
-    Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully (Hint: 123456).');
+    Alert.alert('OTP Resent', 'A new 6-digit code has been sent successfully.');
   };
 
   const handleOtpDigitChange = (val: string, idx: number) => {
@@ -116,14 +117,8 @@ const handleLogout = async () => {
   try {
     setLoading(true);
 
-    await AsyncStorage.removeMany([
-      'token',
-      'user',
-      'refreshToken',
-    ]);
-
-    setStep('landing');
-    setRole(null);
+    await AsyncStorage.multiRemove(['token', 'user', 'refreshToken']);
+    await logoutFromBackend();
 
     Alert.alert('Logged out', 'You have been successfully logged out.');
   } catch (error) {
@@ -232,7 +227,7 @@ const handleLogout = async () => {
         setOtpVal('');
         setOtpDigits(['', '', '', '', '', '']);
       } else {
-        setErrorMsg('Invalid code entered. Use 123456 for simulator.');
+        setErrorMsg('Invalid code entered.');
       }
     } catch (err) {
       setErrorMsg('Verification failed.');
@@ -255,7 +250,7 @@ const handleLogout = async () => {
         setOtpVal('');
         setOtpDigits(['', '', '', '', '', '']);
       } else {
-        setErrorMsg('Invalid code. Try 123456.');
+        setErrorMsg('Invalid code.');
       }
     } catch (err) {
       setErrorMsg('Phone verification failed.');
@@ -675,7 +670,7 @@ const handleLogout = async () => {
           {/* 6 Split Digits Input Layout */}
           <View className="mb-6">
             <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
-              Enter 6-Digit OTP (Hint: 123456)
+              Enter 6-Digit OTP
             </Text>
             
             <View className="flex-row justify-between mb-4 px-2 gap-2">
@@ -766,7 +761,7 @@ const handleLogout = async () => {
           {/* 6 Split Digits Input Layout */}
           <View className="mb-6">
             <Text className={`${colors.text} text-xs font-bold mb-3 ml-1 text-center`}>
-              Enter 6-Digit OTP (Hint: 123456)
+              Enter 6-Digit OTP
             </Text>
             
             <View className="flex-row justify-between mb-4 px-2 gap-2">
