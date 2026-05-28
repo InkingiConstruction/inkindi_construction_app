@@ -19,13 +19,20 @@ import {
   TouchableOpacity, 
   TextInput, 
   Alert, 
-  ActivityIndicator, 
   Image,
   Switch 
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import TabButton from '../../components/ui/TabButton';
 import LottieAnimation from '../../components/ui/LottieAnimation';
+import DashboardShell, { TabDef } from './shared/DashboardShell';
+
+const ENGINEER_TABS: TabDef[] = [
+  { key: 'dashboard', label: 'Home',     icon: 'home-outline',         activeIcon: 'home' },
+  { key: 'projects',  label: 'Projects', icon: 'construct-outline',    activeIcon: 'construct' },
+  { key: 'rfqs',      label: 'RFQs',     icon: 'document-text-outline', activeIcon: 'document-text' },
+  { key: 'earnings',  label: 'Earnings', icon: 'cash-outline',         activeIcon: 'cash' },
+  { key: 'profile',   label: 'Profile',  icon: 'person-outline',       activeIcon: 'person' },
+];
 
 export default function EngineerDashboard() {
   const { 
@@ -39,7 +46,7 @@ export default function EngineerDashboard() {
   } = useAuth();
   
   // Custom Bottom Tabs Navigation State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'projects' | 'boq' | 'messages' | 'profile'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'projects' | 'rfqs' | 'earnings' | 'profile'>('dashboard');
 
   // Theme support
   const isDark = theme === 'dark';
@@ -117,38 +124,18 @@ export default function EngineerDashboard() {
   };
 
   return (
-    <View className={`flex-1 ${colors.bg}`}>
-      
-      {/* Dynamic Header */}
-      <View className={`px-6 pt-14 pb-4 flex-row justify-between items-center ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200'}`}>
-        <View className="flex-row items-center gap-3">
-          {user?.profilePic ? (
-            <Image 
-              source={{ uri: user.profilePic }} 
-              className="w-10 h-10 rounded-full border border-emerald-500" 
-            />
-          ) : (
-            <View className="w-10 h-10 bg-emerald-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-base">{(user?.name || 'U').charAt(0)}</Text>
-            </View>
-          )}
-          <View>
-            <Text className={`${colors.textMuted} text-[10px] font-bold uppercase tracking-wider`}>Engineer Desk</Text>
-            <Text className={`${colors.text} text-base font-bold`}>{user?.name}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          onPress={handleLogout}
-          className="bg-red-500/10 border border-red-500/20 px-3 py-1.5 rounded-lg"
-        >
-          <Text className="text-red-500 text-xs font-bold">Logout</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Scroll View Area */}
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 100 }} 
+    <DashboardShell
+      user={user}
+      roleLabel="Engineer Desk"
+      isDark={isDark}
+      colors={colors}
+      tabs={ENGINEER_TABS}
+      activeTab={currentTab}
+      onTabChange={(k) => setCurrentTab(k as typeof currentTab)}
+      onLogout={handleLogout}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 20 }}
         className="flex-1 px-5 pt-4"
         showsVerticalScrollIndicator={false}
       >
@@ -243,15 +230,14 @@ export default function EngineerDashboard() {
           </View>
         )}
 
-        {/* ================= TAB: BOQ SPREADSHEET ================= */}
-        {currentTab === 'boq' && (
+        {/* ================= TAB: RFQs ================= */}
+        {currentTab === 'rfqs' && (
           <View className="space-y-4">
-            <Text className={`${colors.text} text-lg font-bold mb-1`}>Bill of Quantities (BoQ)</Text>
-            
+            <Text className={`${colors.text} text-lg font-bold mb-1`}>Bill of Quantities / RFQs</Text>
             <View className={`p-4 rounded-2xl border ${colors.card} space-y-3`}>
               {boqItems.map(item => (
-                <View 
-                  key={item.id} 
+                <View
+                  key={item.id}
                   className="pb-3 border-b border-slate-150 dark:border-slate-700/60 last:border-b-0 space-y-1.5"
                 >
                   <View className="flex-row justify-between items-start">
@@ -270,8 +256,43 @@ export default function EngineerDashboard() {
           </View>
         )}
 
-        {/* ================= TAB: MESSAGES ================= */}
-        {currentTab === 'messages' && (
+        {/* ================= TAB: EARNINGS ================= */}
+        {currentTab === 'earnings' && (
+          <View className="space-y-4">
+            <Text className={`${colors.text} text-lg font-bold mb-2`}>Earnings & Payments</Text>
+            <View className="flex-row gap-3">
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[9px] font-bold uppercase`}>Total Earned</Text>
+                <Text className={`${colors.text} text-xl font-black mt-1`}>14,825,000</Text>
+                <Text className={`${colors.textMuted} text-[9px] mt-0.5`}>RWF</Text>
+              </View>
+              <View className={`flex-1 p-4 rounded-2xl border ${colors.card}`}>
+                <Text className={`${colors.textMuted} text-[9px] font-bold uppercase`}>Pending</Text>
+                <Text className={`${colors.text} text-xl font-black mt-1`}>6,150,000</Text>
+                <Text className={`${colors.textMuted} text-[9px] mt-0.5`}>RWF</Text>
+              </View>
+            </View>
+            {[
+              { label: 'Foundation & Excavation', project: 'Kicukiro Family Home', amount: '8,200,000 RWF', status: 'PAID', date: '2026-05-10' },
+              { label: 'Framing & Masonry', project: 'Kicukiro Family Home', amount: '6,625,000 RWF', status: 'PAID', date: '2026-05-18' },
+              { label: 'Roofing & Ceiling', project: 'Musanze Rental Units', amount: '6,150,000 RWF', status: 'PENDING', date: 'Awaiting approval' },
+            ].map((e, i) => (
+              <View key={i} className={`p-4 rounded-2xl border ${colors.card}`}>
+                <View className="flex-row justify-between items-start mb-1">
+                  <View className="flex-1 pr-2">
+                    <Text className={`${colors.text} font-bold text-xs`}>{e.label}</Text>
+                    <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>{e.project}</Text>
+                  </View>
+                  <View style={{ backgroundColor: e.status === 'PAID' ? '#10b98120' : '#f59e0b20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                    <Text style={{ color: e.status === 'PAID' ? '#10b981' : '#f59e0b', fontSize: 9, fontWeight: '700' }}>{e.status}</Text>
+                  </View>
+                </View>
+                <Text className={`${colors.text} font-bold text-sm mt-1`}>{e.amount}</Text>
+                <Text className={`${colors.textMuted} text-[10px] mt-0.5`}>{e.date}</Text>
+              </View>
+            ))}
+          </View>
+        )}
           <View className="space-y-4">
             <View className={`p-4 rounded-2xl border ${colors.card} h-96 flex-col justify-between`}>
               <ScrollView showsVerticalScrollIndicator={false} className="space-y-3 flex-1 pr-1">
@@ -308,8 +329,7 @@ export default function EngineerDashboard() {
               </View>
             </View>
           </View>
-        )}
-
+        
         {/* ================= TAB: PROFILE ================= */}
         {currentTab === 'profile' && (
           <View className="space-y-4">
@@ -355,62 +375,6 @@ export default function EngineerDashboard() {
         )}
 
       </ScrollView>
-
-      {/* iOS style custom bottom navigation */}
-      <View className="absolute bottom-4 left-0 right-0">
-        <View className="mx-6 bg-[#007E6E] rounded-full flex-row justify-around items-center h-16 shadow-lg">
-        <TabButton
-          label="Dash"
-          iconName="home-outline"
-          activeIconName="home"
-          isActive={currentTab === 'dashboard'}
-          onPress={() => setCurrentTab('dashboard')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="Builds"
-          iconName="construct-outline"
-          activeIconName="construct"
-          isActive={currentTab === 'projects'}
-          onPress={() => setCurrentTab('projects')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="BoQ"
-          iconName="document-text-outline"
-          activeIconName="document-text"
-          isActive={currentTab === 'boq'}
-          onPress={() => setCurrentTab('boq')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="Chat"
-          iconName="chatbubbles-outline"
-          activeIconName="chatbubbles"
-          isActive={currentTab === 'messages'}
-          onPress={() => setCurrentTab('messages')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        <TabButton
-          label="User"
-          iconName="person-outline"
-          activeIconName="person"
-          isActive={currentTab === 'profile'}
-          onPress={() => setCurrentTab('profile')}
-          isDark={isDark}
-          variant="pill"
-          showLabel={false}
-        />
-        </View>
-      </View>
-    </View>
+    </DashboardShell>
   );
 }

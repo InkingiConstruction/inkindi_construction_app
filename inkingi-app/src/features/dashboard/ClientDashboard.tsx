@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useClientDashboard } from '../../hooks/useClientDashboard';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useMessages } from '../../hooks/useMessages';
@@ -63,6 +64,8 @@ export default function ClientDashboard() {
 
   const isDark = dashboard.theme === 'dark';
   const colors = getColors(isDark);
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 56 + insets.bottom;
 
   // Sync projects with initial mock data
   useEffect(() => {
@@ -98,7 +101,6 @@ export default function ClientDashboard() {
 
   // --- ESCROW TRANSACTION FLOWS ---
 
-  // Release Milestone Funds
   const handleReleaseMilestone = (index: number) => {
     if (!selectedProject) return;
     const milestone = selectedProject.milestones[index];
@@ -109,11 +111,7 @@ export default function ClientDashboard() {
       const nextMilestones = [...p.milestones];
       nextMilestones[index] = { ...nextMilestones[index], status: 'PAID' };
       const paidPct = nextMilestones.filter((m: any) => m.status === 'PAID').reduce((s: number, m: any) => s + m.pct, 0);
-      return {
-        ...p,
-        progress: paidPct,
-        milestones: nextMilestones
-      };
+      return { ...p, progress: paidPct, milestones: nextMilestones };
     }));
 
     addNotification({
@@ -123,21 +121,16 @@ export default function ClientDashboard() {
       time: 'Just now',
       read: false,
     });
-
     Alert.alert('Success', 'Funds released securely from locked project budget.');
   };
 
-  // Dispute Milestone
   const handleDisputeMilestone = (index: number) => {
     if (!selectedProject) return;
     setLocalProjects((prev: any[]) => prev.map((p: any) => {
       if (p.id !== selectedProject.id) return p;
       const nextMilestones = [...p.milestones];
       nextMilestones[index] = { ...nextMilestones[index], status: 'REVISION' };
-      return {
-        ...p,
-        milestones: nextMilestones
-      };
+      return { ...p, milestones: nextMilestones };
     }));
 
     addNotification({
@@ -147,29 +140,23 @@ export default function ClientDashboard() {
       time: 'Just now',
       read: false,
     });
-
     Alert.alert('Dispute Logged', 'Our supervisors will review this milestone shortly.');
   };
 
-  // Create Project Flow with Budget Warning Check
   const handleCreateProject = (name: string, location: string, budget: number, engineerId: string) => {
     const engineer = dashboard.allEngineers.find((e: any) => e.id === engineerId);
 
     if (walletBalance < budget) {
-      // Store details and launch deposit gate modal
       setPendingProjectData({ name, location, budget, engineerId });
       setShowCreateProjModal(false);
       setShowProjectWarning(true);
       return;
     }
 
-    // Deduct and create project
     setWalletBalance((prev: number) => prev - budget);
     const newProj = {
       id: `proj-${Date.now().toString().slice(-4)}`,
-      name,
-      location,
-      budget,
+      name, location, budget,
       client: dashboard.user?.name || 'Grace Uwase',
       supervisor: 'Aline Mukamana',
       progress: 0,
@@ -195,11 +182,9 @@ export default function ClientDashboard() {
       time: 'Just now',
       read: false,
     });
-
     Alert.alert('Success', 'Project created and full budget locked securely in escrow.');
   };
 
-  // Add Funds via Flutterwave
   const handleFlutterwaveFund = () => {
     if (!fundAmount || parseInt(fundAmount) < 10000) {
       return Alert.alert('Error', 'Minimum 10,000 RWF required');
@@ -220,7 +205,6 @@ export default function ClientDashboard() {
         read: false,
       });
 
-      // If we had a pending project, resume creation check
       if (pendingProjectData) {
         const nextBalance = walletBalance + added;
         if (nextBalance >= pendingProjectData.budget) {
@@ -245,18 +229,11 @@ export default function ClientDashboard() {
     }, 1500);
   };
 
-  // Upload Project Document
   const handleUploadDocument = (projectId: string, docName: string) => {
     setLocalProjects((prev: any[]) => prev.map((p: any) => {
       if (p.id !== projectId) return p;
       const docs = p.documents || [];
-      return {
-        ...p,
-        documents: [
-          ...docs,
-          { name: docName, uploadedAt: new Date().toISOString().split('T')[0], size: '2.4 MB' }
-        ]
-      };
+      return { ...p, documents: [...docs, { name: docName, uploadedAt: new Date().toISOString().split('T')[0], size: '2.4 MB' }] };
     }));
 
     addNotification({
@@ -268,7 +245,6 @@ export default function ClientDashboard() {
     });
   };
 
-  // Upload KYC document
   const handleUploadKYC = () => {
     Alert.prompt(
       'Upload KYC Document',
@@ -317,37 +293,24 @@ export default function ClientDashboard() {
         kycFiles={kycFiles}
         showProfileDrop={showProfileDrop}
         showNotifDrop={showNotifDrop}
-        onToggleProfile={() => {
-          setShowProfileDrop(!showProfileDrop);
-          setShowNotifDrop(false);
-        }}
-        onToggleNotif={() => {
-          setShowNotifDrop(!showNotifDrop);
-          setShowProfileDrop(false);
-        }}
+        onToggleProfile={() => { setShowProfileDrop(!showProfileDrop); setShowNotifDrop(false); }}
+        onToggleNotif={() => { setShowNotifDrop(!showNotifDrop); setShowProfileDrop(false); }}
         onToggleTheme={dashboard.toggleTheme}
         onLogout={dashboard.handleLogout}
         onMarkAllRead={markAllRead}
         onUploadKYC={handleUploadKYC}
-        onCloseDropdowns={() => {
-          setShowProfileDrop(false);
-          setShowNotifDrop(false);
-        }}
+        onCloseDropdowns={() => { setShowProfileDrop(false); setShowNotifDrop(false); }}
         onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       {/* Workspace Pages */}
       {currentTab === 'chat' ? (
         <View className="flex-1 px-5 pt-4" style={{ paddingBottom: 96 }}>
-          <ChatTab
-            messages={messages}
-            colors={colors}
-            onSendMessage={sendMessage}
-          />
+          <ChatTab messages={messages} colors={colors} onSendMessage={sendMessage} />
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + 8 }}
           className="flex-1 px-5 pt-4"
           showsVerticalScrollIndicator={false}
         >
@@ -357,13 +320,10 @@ export default function ClientDashboard() {
               clientProjects={localProjects}
               colors={colors}
               onAddProject={() => setShowCreateProjModal(true)}
-              onSelectProject={(proj) => {
-                setSelectedProjId(proj.id);
-              }}
+              onSelectProject={(proj) => setSelectedProjId(proj.id)}
               onChangeTab={setCurrentTab}
             />
           )}
-
           {currentTab === 'projects' && (
             <ProjectsTab
               clientProjects={localProjects}
@@ -376,7 +336,6 @@ export default function ClientDashboard() {
               onUploadDocument={handleUploadDocument}
             />
           )}
-
           {currentTab === 'engineers' && (
             <EngineersTab
               allEngineers={dashboard.allEngineers}
@@ -385,26 +344,42 @@ export default function ClientDashboard() {
               onToggleFavorite={dashboard.toggleFavorite}
             />
           )}
-
           {currentTab === 'wallet' && (
-            <WalletTab
-              walletBalance={walletBalance}
-              colors={colors}
-            />
+            <WalletTab walletBalance={walletBalance} colors={colors} />
           )}
         </ScrollView>
       )}
 
-      {/* Footer Navigation Bar */}
-      <View className={`border-t flex-row justify-around items-center h-20 pb-4 shadow-lg absolute bottom-0 left-0 right-0 ${colors.tabBar}`}>
-        <TabButton label="Dash" iconName="home-outline" activeIconName="home" isActive={currentTab === 'dashboard'} onPress={() => setCurrentTab('dashboard')} isDark={isDark} />
-        <TabButton label="Builds" iconName="construct-outline" activeIconName="construct" isActive={currentTab === 'projects'} onPress={() => setCurrentTab('projects')} isDark={isDark} />
-        <TabButton label="Engineers" iconName="people-outline" activeIconName="people" isActive={currentTab === 'engineers'} onPress={() => setCurrentTab('engineers')} isDark={isDark} />
-        <TabButton label="Wallet" iconName="wallet-outline" activeIconName="wallet" isActive={currentTab === 'wallet'} onPress={() => setCurrentTab('wallet')} isDark={isDark} />
-        <TabButton label="Chat" iconName="chatbubbles-outline" activeIconName="chatbubbles" isActive={currentTab === 'chat'} onPress={() => setCurrentTab('chat')} isDark={isDark} />
+      {/* Footer Navigation Bar — LinkedIn style: icon + label, safe area aware */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: TAB_BAR_HEIGHT,
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          alignItems: 'flex-start',
+          paddingTop: 8,
+          paddingBottom: insets.bottom,
+          borderTopWidth: 1,
+          borderTopColor: isDark ? '#1e293b' : '#e8e8e8',
+          backgroundColor: isDark ? '#0f172a' : '#ffffff',
+          shadowColor: '#000',
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
+          elevation: 8,
+        }}
+      >
+        <TabButton label="Home"      iconName="home-outline"        activeIconName="home"        isActive={currentTab === 'dashboard'} onPress={() => setCurrentTab('dashboard')} isDark={isDark} />
+        <TabButton label="Projects"  iconName="construct-outline"   activeIconName="construct"   isActive={currentTab === 'projects'}  onPress={() => setCurrentTab('projects')}  isDark={isDark} />
+        <TabButton label="Engineers" iconName="people-outline"      activeIconName="people"      isActive={currentTab === 'engineers'} onPress={() => setCurrentTab('engineers')} isDark={isDark} />
+        <TabButton label="Wallet"    iconName="wallet-outline"      activeIconName="wallet"      isActive={currentTab === 'wallet'}    onPress={() => setCurrentTab('wallet')}    isDark={isDark} />
+        <TabButton label="Chat"      iconName="chatbubbles-outline" activeIconName="chatbubbles" isActive={currentTab === 'chat'}      onPress={() => setCurrentTab('chat')}      isDark={isDark} />
       </View>
 
-      {/* Create Custom Project Modal */}
+      {/* Modals */}
       <CreateProjectModal
         visible={showCreateProjModal}
         engineers={dashboard.allEngineers}
@@ -412,19 +387,12 @@ export default function ClientDashboard() {
         onClose={() => setShowCreateProjModal(false)}
         onSubmit={handleCreateProject}
       />
-
-      {/* Escrow Insufficient Balance Warn Modal */}
       <WalletGateModal
         visible={showProjectWarning}
         colors={colors}
         onClose={() => setShowProjectWarning(false)}
-        onAddFunds={() => {
-          setShowProjectWarning(false);
-          setShowFundModal(true);
-        }}
+        onAddFunds={() => { setShowProjectWarning(false); setShowFundModal(true); }}
       />
-
-      {/* Flutterwave Deposit Gateway Modal */}
       <AddFundsModal
         visible={showFundModal}
         fundAmount={fundAmount}
@@ -434,8 +402,6 @@ export default function ClientDashboard() {
         onChangeAmount={setFundAmount}
         onSubmit={handleFlutterwaveFund}
       />
-
-      {/* Profile & Settings Modal */}
       <ProfileSettingsModal
         visible={showSettingsModal}
         colors={colors}
