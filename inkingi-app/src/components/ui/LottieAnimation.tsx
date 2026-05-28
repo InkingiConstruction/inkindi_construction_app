@@ -1,4 +1,3 @@
-import React from 'react';
 import { View, Platform, ActivityIndicator, Text } from 'react-native';
 
 let LottieView: any = null;
@@ -22,11 +21,11 @@ interface LottieAnimationProps {
 }
 
 const animationMap: Record<string, any> = {
-  loading: require('@/assets/lottie/app_loading.json'),
-  success: require('@/assets/lottie/payment_success.json'),
-  construction: require('@/assets/lottie/construction_building.json'),
-  empty: require('@/assets/lottie/empty_state.json'),
-  secure: require('@/assets/lottie/escrow_secure.json'),
+  loading: require('@/assets/lottie/construction_progress.json'), // using as fallback
+  success: require('@/assets/lottie/secure_payment.json'), // using as fallback
+  construction: require('@/assets/lottie/construction_progress.json'),
+  empty: require('@/assets/lottie/inspection_checklist.json'), // using as fallback
+  secure: require('@/assets/lottie/secure_payment.json'),
 };
 
 export default function LottieAnimation({
