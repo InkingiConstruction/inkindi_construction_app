@@ -26,6 +26,7 @@ import {
 import { useAuth, AuthStep } from '../../contexts/AuthContext';
 import { simulateExternalRegistryCheck } from '../../data/mockAdminService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { HomeIcon } from 'lucide-react-native';
 
 export default function AuthFlow() {
   const { 
@@ -336,42 +337,58 @@ const handleLogout = async () => {
   if (step === 'landing') {
     return (
       <ImageBackground
-        source={require('../../../assets/inkingi-banner.jpg')}
-        className="flex-1"
-      >
-        <View className="flex-1 bg-black/70 justify-end px-6 pb-12">
-          <View className="mb-6">
-            <View className="w-16 h-16 bg-emerald-600 rounded-3xl items-center justify-center mb-4">
-              <Text className="text-white text-3xl font-extrabold">I</Text>
-            </View>
-            <Text className="text-white text-3xl font-extrabold leading-tight">
-              InkingiPro Build
-            </Text>
-            <Text className="text-emerald-400 text-sm font-semibold tracking-wider uppercase mt-1">
-              Escrow & Onboarding Vault
-            </Text>
-            <Text className="text-slate-300 text-sm mt-3 leading-5">
-              Secure payments, digital inspections, and transparent procurement for diaspora construction investors.
-            </Text>
+      source={require('../../../assets/inkingi-banner.jpg')}
+      className="flex-1"
+    >
+      {/* Dark overlay with centered content layout */}
+      <View className="flex-1 bg-black/60 justify-between items-center px-8 pt-24 pb-16">
+        
+        {/* Top/Middle Content Section */}
+        <View className="items-center flex-1 justify-center max-w-xs">
+          {/* Logo Icon Placeholder */}
+          <View className="mb-4">
+            <HomeIcon size={44} color="#34D399" />
           </View>
 
-          <View className="space-y-3.5">
-            <TouchableOpacity 
-              className="bg-emerald-650 active:bg-emerald-700 py-4 rounded-2xl items-center border border-emerald-500"
-              onPress={() => setStep('login')}
-            >
-              <Text className="text-white font-bold text-base">Sign In to Dashboard</Text>
-            </TouchableOpacity>
+          {/* Heading */}
+          <Text className="text-[#8AF2BB] text-2xl font-bold tracking-widest text-center uppercase">
+            Welcome To
+          </Text>
+          <Text className="text-[#8AF2BB] text-2xl font-bold tracking-widest text-center uppercase mb-6">
+            Inkingi
+          </Text>
 
-            <TouchableOpacity 
-              className="bg-white/10 active:bg-white/20 py-4 rounded-2xl items-center border border-white/20"
-              onPress={() => setStep('register')}
-            >
-              <Text className="text-white font-bold text-base">Create Onboarding Profile</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Subtitle / Description */}
+          <Text className="text-white text-lg text-center leading-6">
+            Bridging trust between Diaspora investors and local construction professionals in Rwanda
+          </Text>
         </View>
-      </ImageBackground>
+
+        {/* Bottom Actions Section */}
+        <View className="w-full space-y-6">
+          {/* Create Account Button */}
+          <TouchableOpacity 
+            className="bg-[#007A64] py-4 rounded-xl items-center shadow-sm"
+            onPress={() => setStep('register')}
+          >
+            <Text className="text-white font-bold text-base tracking-wider uppercase">
+              Create Account
+            </Text>
+          </TouchableOpacity>
+
+          {/* Login Button */}
+          <TouchableOpacity 
+            className="bg-[#B08D49] py-4 rounded-xl items-center shadow-sm mt-4"
+            onPress={() => setStep('login')}
+          >
+            <Text className="text-white font-bold text-base tracking-wider uppercase">
+              Login
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </ImageBackground>
     );
   }
 
