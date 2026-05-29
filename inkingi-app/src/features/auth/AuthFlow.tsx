@@ -29,6 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HomeIcon } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
 import UploadClientDocs from '@/components/UploadClientDocs';
+import { MaterialIcons } from '@expo/vector-icons';
 export default function AuthFlow() {
   const { 
     step, 
@@ -454,7 +455,7 @@ const handleLogout = async () => {
                   onChangeText={setLoginPass}
                 />
                 <TouchableOpacity onPress={() => setShowLoginPassword((p) => !p)} className="py-2 pl-3">
-                  <Text className="text-slate-500 text-base">{showLoginPassword ? '🙈' : '👁️'}</Text>
+                 {showLoginPassword ? <MaterialIcons name="visibility" size={24} color="#94a3b8" /> : <MaterialIcons name="visibility-off" size={24} color="#94a3b8" />}
                 </TouchableOpacity>
               </View>
             </View>
