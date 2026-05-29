@@ -1078,42 +1078,6 @@ export default function EngineerDashboard() {
             ))}
           </View>
         )}
-          <View className="space-y-4">
-            <View className={`p-4 rounded-2xl border ${colors.card} h-96 flex-col justify-between`}>
-              <ScrollView showsVerticalScrollIndicator={false} className="space-y-3 flex-1 pr-1">
-                {messagesList.map(msg => (
-                  <View 
-                    key={msg.id} 
-                    className={`p-3 rounded-2xl max-w-[80%] ${
-                      msg.sender === 'You' 
-                        ? 'bg-emerald-600 self-end rounded-tr-none' 
-                        : 'bg-slate-100 dark:bg-slate-700/50 self-start rounded-tl-none'
-                    }`}
-                  >
-                    <Text className={`${colors.textMuted} text-[9px] font-bold mb-0.5`}>{msg.sender}</Text>
-                    <Text className={`text-xs ${msg.sender === 'You' ? 'text-white' : colors.text}`}>{msg.text}</Text>
-                    <Text className={`text-[8px] text-right mt-1 ${msg.sender === 'You' ? 'text-emerald-250' : colors.textMuted}`}>{msg.time}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-
-              <View className="flex-row gap-2 border-t border-slate-100 dark:border-slate-700 pt-3 mt-2">
-                <TextInput
-                  value={chatText}
-                  onChangeText={setChatText}
-                  placeholder="Type message to client / supervisor..."
-                  placeholderTextColor="#94a3b8"
-                  className={`flex-1 px-4 py-2.5 rounded-xl text-xs ${colors.inputBg} ${colors.text}`}
-                />
-                <TouchableOpacity 
-                  onPress={handleSendMessage}
-                  className="bg-emerald-600 px-4 py-2.5 rounded-xl justify-center items-center"
-                >
-                  <Text className="text-white font-bold text-xs">Send</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
         
         {/* ================= TAB: PROFILE ================= */}
         {currentTab === 'profile' && (
