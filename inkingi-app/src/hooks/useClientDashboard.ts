@@ -72,11 +72,32 @@ export function useClientDashboard() {
   const { addNotification } = useNotifications();
 
   // ── Derived: all engineers on the platform ─────────────────────────────────
-  const allEngineers: MockUser[] = useMemo(() => {
+  const allEngineers = useMemo(() => {
     const fromContext = mockUsers.filter(u => u.role === 'ENGINEER');
     const ids = new Set(fromContext.map(e => e.id));
     const extras = EXTRA_ENGINEERS.filter(e => !ids.has(e.id));
-    return [...fromContext, ...extras];
+    const list = [...fromContext, ...extras];
+    return list.map(e => {
+      const meta = ENGINEER_META[e.id] || {
+        rating: 4.5,
+        completedProjects: 5,
+        experience: 5,
+        specializations: ['General Construction']
+      };
+      return {
+        ...e,
+        licenseNumber: e.licenseNumber || 'IER-2026-0000',
+        specialty: meta.specializations[0],
+        rating: meta.rating,
+        completedProjects: meta.completedProjects,
+        yearsExperience: meta.experience,
+        district: 'Kigali',
+        bio: 'Licensed professional engineer specialized in secure structural systems.',
+        reviews: [
+          { id: 'rev-1', clientName: 'Grace Uwase', rating: 5, comment: 'Exceptional attention to details on structural foundation.', date: '2026-05-10', projectName: 'Residential Build KG-12' }
+        ],
+      };
+    });
   }, [mockUsers]);
 
   // ── Derived: client's own projects ────────────────────────────────────────
