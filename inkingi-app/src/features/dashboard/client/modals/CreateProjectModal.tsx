@@ -35,6 +35,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (data: any) => void;
   onOpenMapBoundary?: () => void;
+  projectToEdit?: any;
 }
 
 /* ===================== STEPS ===================== */
@@ -47,6 +48,7 @@ export default function CreateProjectModal({
   onClose,
   onSubmit,
   onOpenMapBoundary,
+  projectToEdit,
 }: Props) {
   const [step, setStep] = useState(0);
 
@@ -74,6 +76,42 @@ export default function CreateProjectModal({
 
   /* ===================== ENGINEER ===================== */
   const [selectedEngineer, setSelectedEngineer] = useState('');
+
+  React.useEffect(() => {
+    if (projectToEdit) {
+      setProjectName(projectToEdit.name || '');
+      setDescription(projectToEdit.description || '');
+      setCategory(projectToEdit.category || 'Residential');
+      setStartDate(projectToEdit.startDate ? new Date(projectToEdit.startDate) : null);
+      setEndDate(projectToEdit.endDate ? new Date(projectToEdit.endDate) : null);
+      setBudget(String(projectToEdit.budget || ''));
+      setCurrency(projectToEdit.currency || 'RWF');
+      setGpsBoundaryAdded(true);
+      setSelectedEngineer(projectToEdit.engineerId || '');
+      if (projectToEdit.documents) {
+        const docPhotos = projectToEdit.documents.filter((d: any) => d.type === 'photo').map((d: any) => d.name);
+        const docPlans = projectToEdit.documents.filter((d: any) => d.type === 'document').map((d: any) => d.name);
+        setSitePhotos(docPhotos.length > 0 ? docPhotos : ['site_photo_1.jpg', 'site_photo_2.jpg', 'site_photo_3.jpg']);
+        setPlans(docPlans);
+      } else {
+        setSitePhotos(['site_photo_1.jpg', 'site_photo_2.jpg', 'site_photo_3.jpg']);
+        setPlans([]);
+      }
+    } else {
+      setStep(0);
+      setProjectName('');
+      setDescription('');
+      setCategory('Residential');
+      setStartDate(null);
+      setEndDate(null);
+      setBudget('');
+      setCurrency('RWF');
+      setSitePhotos([]);
+      setPlans([]);
+      setSelectedEngineer('');
+      setGpsBoundaryAdded(false);
+    }
+  }, [projectToEdit, visible]);
 
   const categories = ['Residential', 'Commercial', 'Industrial', 'Infrastructure'];
 
@@ -218,102 +256,555 @@ export default function CreateProjectModal({
 
           {/* ================= STEP CONTENT ================= */}
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+  showsVerticalScrollIndicator={false}
+  contentContainerStyle={{
+    paddingBottom: 40,
+  }}
+>
 
-            {/* STEP 0 BASIC */}
-            {step === 0 && (
-              <View>
-                <TextInput placeholder="Project Name" value={projectName} onChangeText={setProjectName} className="p-3 border rounded-xl mb-3" />
-                <TextInput placeholder="Description" value={description} onChangeText={setDescription} multiline className="p-3 border rounded-xl mb-3" />
+  {/* ====================================================== */}
+  {/* STEP 0 — BASIC INFORMATION */}
+  {/* ====================================================== */}
 
-                {/* CATEGORY */}
-                <ScrollView horizontal>
-                  {categories.map(c => (
-                    <TouchableOpacity key={c} onPress={() => setCategory(c)} className="p-2 mr-2 border rounded-xl">
-                      <Text>{c}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+  {step === 0 && (
+    <View>
 
-                {/* DATE PICKERS */}
-                <TouchableOpacity onPress={() => setShowStart(true)} className="p-3 border rounded-xl mt-3">
-                  <Text>{startDate ? startDate.toDateString() : 'Pick Start Date'}</Text>
-                </TouchableOpacity>
+      {/* SECTION HEADER */}
+      <View className="mb-6">
+        <Text className={`${colors.text} text-xl font-extrabold`}>
+          Basic Information
+        </Text>
 
-                <TouchableOpacity onPress={() => setShowEnd(true)} className="p-3 border rounded-xl mt-3">
-                  <Text>{endDate ? endDate.toDateString() : 'Pick End Date'}</Text>
-                </TouchableOpacity>
+        <Text className={`${colors.textMuted} text-sm mt-1`}>
+          Configure the core details of your construction project.
+        </Text>
+      </View>
 
-                {showStart && (
-                  <DateTimePicker
-                    value={startDate || new Date()}
-                    mode="date"
-                    onChange={(e, d) => {
-                      setShowStart(false);
-                      if (d) setStartDate(d);
-                    }}
-                  />
-                )}
+      {/* PROJECT NAME */}
+      <View className="mb-5">
 
-                {showEnd && (
-                  <DateTimePicker
-                    value={endDate || new Date()}
-                    mode="date"
-                    onChange={(e, d) => {
-                      setShowEnd(false);
-                      if (d) setEndDate(d);
-                    }}
-                  />
-                )}
-              </View>
-            )}
+        <Text className={`${colors.text} text-sm font-bold mb-2`}>
+          Project Name *
+        </Text>
 
-            {/* STEP 1 BUDGET */}
-            {step === 1 && (
-              <View>
-                <TextInput placeholder="Budget (RWF)" value={budget} onChangeText={setBudget} keyboardType="numeric" className="p-3 border rounded-xl" />
-              </View>
-            )}
+        <View className={`border rounded-2xl px-4 py-4 flex-row items-center ${colors.inputBg}`}>
+          <Ionicons
+            name="business-outline"
+            size={18}
+            color="#64748b"
+          />
 
-            {/* STEP 2 LOCATION */}
-            {step === 2 && (
+          <TextInput
+            value={projectName}
+            onChangeText={setProjectName}
+            placeholder="Kimironko Smart Residence"
+            placeholderTextColor="#94a3b8"
+            className={`flex-1 ml-3 text-sm ${colors.text}`}
+          />
+        </View>
+
+      </View>
+
+      {/* PROJECT DESCRIPTION */}
+      <View className="mb-5">
+
+        <Text className={`${colors.text} text-sm font-bold mb-2`}>
+          Project Description *
+        </Text>
+
+        <TextInput
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={6}
+          textAlignVertical="top"
+          placeholder="Describe the construction project scope, objectives, timelines, and expectations..."
+          placeholderTextColor="#94a3b8"
+          className={`border rounded-2xl px-4 py-4 min-h-[140px] text-sm ${colors.inputBg} ${colors.text}`}
+        />
+
+      </View>
+
+      {/* PROJECT CATEGORY */}
+      <View className="mb-6">
+
+        <Text className={`${colors.text} text-sm font-bold mb-3`}>
+          Project Category *
+        </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {categories.map((c) => {
+            const active = category === c;
+
+            return (
               <TouchableOpacity
-                onPress={() => {
-                  setGpsBoundaryAdded(true);
-                  onOpenMapBoundary?.();
-                }}
-                className="p-5 border rounded-xl"
+                key={c}
+                onPress={() => setCategory(c)}
+                activeOpacity={0.9}
+                className={`mr-3 px-5 py-3 rounded-2xl border ${
+                  active
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'border-slate-300 dark:border-slate-700'
+                }`}
               >
-                <Text>Draw GPS Boundary</Text>
-                {gpsBoundaryAdded && <Text>✓ Added</Text>}
+                <Text
+                  className={`font-bold text-xs ${
+                    active
+                      ? 'text-white'
+                      : colors.text
+                  }`}
+                >
+                  {c}
+                </Text>
               </TouchableOpacity>
-            )}
+            );
+          })}
+        </ScrollView>
 
-            {/* STEP 3 DOCUMENTS */}
-            {step === 3 && (
-              <View>
-                <TouchableOpacity onPress={pickImages} className="p-4 border rounded-xl mb-3">
-                  <Text>Upload Site Photos ({sitePhotos.length})</Text>
-                </TouchableOpacity>
+      </View>
 
-                <TouchableOpacity onPress={pickPlans} className="p-4 border rounded-xl">
-                  <Text>Upload Plans ({plans.length})</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+      {/* DATES */}
+      <View className="flex-row gap-4">
 
-            {/* STEP 4 ENGINEER */}
-            {step === 4 && (
-              <ScrollView horizontal>
-                {engineers.map(e => (
-                  <TouchableOpacity key={e.id} onPress={() => setSelectedEngineer(e.id)} className="p-3 border mr-2 rounded-xl">
-                    <Text>{e.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+        {/* START DATE */}
+        <View className="flex-1">
 
-          </ScrollView>
+          <Text className={`${colors.text} text-sm font-bold mb-2`}>
+            Start Date *
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => setShowStart(true)}
+            activeOpacity={0.8}
+            className={`border rounded-2xl px-4 py-4 flex-row items-center justify-between ${colors.inputBg}`}
+          >
+
+            <View className="flex-row items-center flex-1">
+
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color="#64748b"
+              />
+
+              <Text
+                className={`ml-3 text-sm ${
+                  startDate
+                    ? colors.text
+                    : 'text-slate-400'
+                }`}
+                numberOfLines={1}
+              >
+                {startDate
+                  ? startDate.toDateString()
+                  : 'Select date'}
+              </Text>
+
+            </View>
+
+          </TouchableOpacity>
+
+        </View>
+
+        {/* END DATE */}
+        <View className="flex-1">
+
+          <Text className={`${colors.text} text-sm font-bold mb-2`}>
+            End Date *
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => setShowEnd(true)}
+            activeOpacity={0.8}
+            className={`border rounded-2xl px-4 py-4 flex-row items-center justify-between ${colors.inputBg}`}
+          >
+
+            <View className="flex-row items-center flex-1">
+
+              <Ionicons
+                name="calendar-outline"
+                size={18}
+                color="#64748b"
+              />
+
+              <Text
+                className={`ml-3 text-sm ${
+                  endDate
+                    ? colors.text
+                    : 'text-slate-400'
+                }`}
+                numberOfLines={1}
+              >
+                {endDate
+                  ? endDate.toDateString()
+                  : 'Select date'}
+              </Text>
+
+            </View>
+
+          </TouchableOpacity>
+
+        </View>
+
+      </View>
+
+      {/* START DATE PICKER */}
+      {showStart && (
+        <DateTimePicker
+          value={startDate || new Date()}
+          mode="date"
+          display="default"
+          minimumDate={new Date()}
+          onChange={(event, selectedDate) => {
+            setShowStart(false);
+
+            if (selectedDate) {
+              setStartDate(selectedDate);
+            }
+          }}
+        />
+      )}
+
+      {/* END DATE PICKER */}
+      {showEnd && (
+        <DateTimePicker
+          value={endDate || new Date()}
+          mode="date"
+          display="default"
+          minimumDate={startDate || new Date()}
+          onChange={(event, selectedDate) => {
+            setShowEnd(false);
+
+            if (selectedDate) {
+              setEndDate(selectedDate);
+            }
+          }}
+        />
+      )}
+
+    </View>
+  )}
+
+  {/* ====================================================== */}
+  {/* STEP 1 — BUDGET */}
+  {/* ====================================================== */}
+
+  {step === 1 && (
+    <View>
+
+      <View className="mb-6">
+        <Text className={`${colors.text} text-xl font-extrabold`}>
+          Budget Configuration
+        </Text>
+
+        <Text className={`${colors.textMuted} text-sm mt-1`}>
+          Define the total secured escrow project budget.
+        </Text>
+      </View>
+
+      {/* BUDGET */}
+      <View className="mb-5">
+
+        <Text className={`${colors.text} text-sm font-bold mb-2`}>
+          Total Budget *
+        </Text>
+
+        <View className={`border rounded-2xl px-4 py-4 flex-row items-center ${colors.inputBg}`}>
+
+          <Ionicons
+            name="wallet-outline"
+            size={18}
+            color="#64748b"
+          />
+
+          <TextInput
+            value={budget}
+            onChangeText={setBudget}
+            keyboardType="numeric"
+            placeholder="15,000,000"
+            placeholderTextColor="#94a3b8"
+            className={`flex-1 ml-3 text-sm ${colors.text}`}
+          />
+
+        </View>
+
+      </View>
+
+      {/* CURRENCY */}
+      <View>
+
+        <Text className={`${colors.text} text-sm font-bold mb-3`}>
+          Currency
+        </Text>
+
+        <View className="flex-row">
+
+          {['RWF', 'USD'].map((curr) => {
+            const active = currency === curr;
+
+            return (
+              <TouchableOpacity
+                key={curr}
+                onPress={() => setCurrency(curr)}
+                className={`flex-1 py-4 rounded-2xl border items-center mr-3 ${
+                  active
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                <Text
+                  className={`font-bold ${
+                    active
+                      ? 'text-white'
+                      : colors.text
+                  }`}
+                >
+                  {curr}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+
+        </View>
+
+      </View>
+
+    </View>
+  )}
+
+  {/* ====================================================== */}
+  {/* STEP 2 — LOCATION */}
+  {/* ====================================================== */}
+
+  {step === 2 && (
+    <View>
+
+      <View className="mb-6">
+        <Text className={`${colors.text} text-xl font-extrabold`}>
+          Site Location
+        </Text>
+
+        <Text className={`${colors.textMuted} text-sm mt-1`}>
+          Draw the legal GPS construction perimeter on the map.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => {
+          setGpsBoundaryAdded(true);
+          onOpenMapBoundary?.();
+        }}
+        className="border border-primary-500/20 bg-primary-500/5 rounded-3xl p-5"
+      >
+
+        <View className="flex-row items-center justify-between">
+
+          <View className="flex-row items-center flex-1">
+
+            <View className="w-14 h-14 rounded-2xl bg-primary-500/10 items-center justify-center">
+              <Ionicons
+                name="map-outline"
+                size={24}
+                color="#14b8a6"
+              />
+            </View>
+
+            <View className="ml-4 flex-1">
+              <Text className={`${colors.text} font-bold text-base`}>
+                Draw GPS Boundary
+              </Text>
+
+              <Text className={`${colors.textMuted} text-xs mt-1`}>
+                Use Google Maps to mark the exact property polygon.
+              </Text>
+            </View>
+
+          </View>
+
+          {gpsBoundaryAdded && (
+            <Ionicons
+              name="checkmark-circle"
+              size={26}
+              color="#10b981"
+            />
+          )}
+
+        </View>
+
+      </TouchableOpacity>
+
+    </View>
+  )}
+
+  {/* ====================================================== */}
+  {/* STEP 3 — DOCUMENTS */}
+  {/* ====================================================== */}
+
+  {step === 3 && (
+    <View>
+
+      <View className="mb-6">
+        <Text className={`${colors.text} text-xl font-extrabold`}>
+          Site Documents
+        </Text>
+
+        <Text className={`${colors.textMuted} text-sm mt-1`}>
+          Upload site photos and construction plans.
+        </Text>
+      </View>
+
+      {/* SITE PHOTOS */}
+      <TouchableOpacity
+        onPress={pickImages}
+        activeOpacity={0.9}
+        className="border border-dashed border-primary-500/30 rounded-3xl p-5 mb-5"
+      >
+
+        <View className="flex-row items-center">
+
+          <View className="w-14 h-14 rounded-2xl bg-primary-500/10 items-center justify-center">
+            <Ionicons
+              name="images-outline"
+              size={24}
+              color="#14b8a6"
+            />
+          </View>
+
+          <View className="ml-4 flex-1">
+            <Text className={`${colors.text} font-bold text-base`}>
+              Upload Site Photos
+            </Text>
+
+            <Text className={`${colors.textMuted} text-xs mt-1`}>
+              Minimum 3 high quality construction site images.
+            </Text>
+          </View>
+
+          <Text className="text-emerald-500 font-bold text-xs">
+            {sitePhotos.length} Files
+          </Text>
+
+        </View>
+
+      </TouchableOpacity>
+
+      {/* PLANS */}
+      <TouchableOpacity
+        onPress={pickPlans}
+        activeOpacity={0.9}
+        className="border border-dashed border-primary-500/30 rounded-3xl p-5"
+      >
+
+        <View className="flex-row items-center">
+
+          <View className="w-14 h-14 rounded-2xl bg-primary-500/10 items-center justify-center">
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color="#14b8a6"
+            />
+          </View>
+
+          <View className="ml-4 flex-1">
+            <Text className={`${colors.text} font-bold text-base`}>
+              Upload Architectural Plans
+            </Text>
+
+            <Text className={`${colors.textMuted} text-xs mt-1`}>
+              PDF or DWG architectural documentation.
+            </Text>
+          </View>
+
+          <Text className="text-emerald-500 font-bold text-xs">
+            {plans.length} Files
+          </Text>
+
+        </View>
+
+      </TouchableOpacity>
+
+    </View>
+  )}
+
+  {/* ====================================================== */}
+  {/* STEP 4 — ENGINEER */}
+  {/* ====================================================== */}
+
+  {step === 4 && (
+    <View>
+
+      <View className="mb-6">
+        <Text className={`${colors.text} text-xl font-extrabold`}>
+          Assign Engineer
+        </Text>
+
+        <Text className={`${colors.textMuted} text-sm mt-1`}>
+          Select a certified engineer for this construction project.
+        </Text>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+
+        {engineers.map((e) => {
+          const active = selectedEngineer === e.id;
+
+          return (
+            <TouchableOpacity
+              key={e.id}
+              onPress={() => setSelectedEngineer(e.id)}
+              activeOpacity={0.9}
+              className={`w-[150px] rounded-3xl p-4 mr-4 border items-center ${
+                active
+                  ? 'bg-primary-500/10 border-primary-500'
+                  : 'border-slate-300 dark:border-slate-700'
+              }`}
+            >
+
+              <Image
+                source={{ uri: e.profilePic }}
+                className="w-16 h-16 rounded-full"
+              />
+
+              <Text
+                numberOfLines={1}
+                className={`${colors.text} font-bold text-sm mt-3`}
+              >
+                {e.name}
+              </Text>
+
+              <Text
+                numberOfLines={1}
+                className="text-slate-400 text-[10px] mt-1"
+              >
+                {e.licenseNumber}
+              </Text>
+
+              {active && (
+                <View className="mt-3 bg-primary-500 px-3 py-1 rounded-full">
+                  <Text className="text-white text-[10px] font-bold">
+                    Selected
+                  </Text>
+                </View>
+              )}
+
+            </TouchableOpacity>
+          );
+        })}
+
+      </ScrollView>
+
+    </View>
+  )}
+
+</ScrollView>
 
           {/* ================= NAVIGATION ================= */}
 
